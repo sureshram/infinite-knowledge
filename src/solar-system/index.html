@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar System — Scale Model | Infinite Knowledge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --ui-bg:     rgba(8, 16, 34, 0.92);
+      --ui-border: rgba(255,255,255,0.08);
+      --text:      #dde4f0;
+      --muted:     #6b7a94;
+      --accent:    #4a9eff;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      padding: 10px 20px;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 20;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand    { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .hed      { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .scale-pill {
+      font-size: 11px; color: var(--accent);
+      background: rgba(74,158,255,.1);
+      border: 1px solid rgba(74,158,255,.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ── Nav bar ─────────────────────────────────────────── */
+    nav {
+      padding: 8px 16px;
+      display: flex; gap: 6px; align-items: center;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      flex-shrink: 0;
+      overflow-x: auto;
+      backdrop-filter: blur(12px);
+    }
+
+    nav::-webkit-scrollbar { display: none; }
+
+    .nav-label { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                 letter-spacing: .07em; white-space: nowrap; margin-right: 4px; }
+
+    .nav-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 20px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--text);
+      font-size: 12px; cursor: pointer;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.2); }
+
+    .ndot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .light-btn {
+      margin-left: auto; padding: 4px 14px; border-radius: 20px;
+      border: 1px solid rgba(255,220,0,.35);
+      background: rgba(255,220,0,.07); color: #ffd700;
+      font-size: 12px; cursor: pointer;
+      transition: background .15s; white-space: nowrap;
+    }
+    .light-btn:hover { background: rgba(255,220,0,.15); }
+    .light-btn.active { background: rgba(255,220,0,.22); border-color: #ffd700; }
+
+    /* ── Space viewport ──────────────────────────────────── */
+    .viewport {
+      flex: 1; overflow-x: auto; overflow-y: hidden;
+      position: relative; cursor: grab; user-select: none;
+    }
+    .viewport:active { cursor: grabbing; }
+    .viewport::-webkit-scrollbar { height: 5px; }
+    .viewport::-webkit-scrollbar-track { background: rgba(255,255,255,.02); }
+    .viewport::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+    .track {
+      position: relative; height: 100%;
+      /* width set by JS */
+    }
+
+    canvas#stars {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 0;
+    }
+
+    .orbit-line {
+      position: absolute; top: 50%; left: 0; right: 0;
+      height: 1px; background: rgba(255,255,255,.05);
+      transform: translateY(-50%); z-index: 1;
+    }
+
+    /* ── Bodies ──────────────────────────────────────────── */
+    .body {
+      position: absolute; top: 50%;
+      border-radius: 50%; z-index: 3; cursor: pointer;
+      transform: translate(-50%, -50%);
+      transition: transform .18s;
+    }
+    .body:hover { transform: translate(-50%, -50%) scale(1.4); z-index: 6; }
+
+    .sun-body {
+      position: absolute; top: 50%;
+      border-radius: 50%; z-index: 3; cursor: pointer;
+      /* left edge anchored, not centred */
+    }
+
+    .ring {
+      position: absolute; top: 50%;
+      border-radius: 50%; pointer-events: none; z-index: 2;
+    }
+
+    .plabel {
+      position: absolute; top: calc(50% - 46px);
+      transform: translateX(-50%);
+      font-size: 11px; color: var(--text); white-space: nowrap;
+      z-index: 4; text-align: center; font-weight: 500;
+      pointer-events: none;
+    }
+
+    .pdist {
+      position: absolute; top: calc(50% + 28px);
+      transform: translateX(-50%);
+      font-size: 10px; color: var(--muted); white-space: nowrap;
+      z-index: 4; text-align: center; line-height: 1.4;
+      pointer-events: none;
+    }
+
+    /* ── Light pulse ─────────────────────────────────────── */
+    .pulse {
+      position: absolute; top: 50%;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #ffffc0; box-shadow: 0 0 8px 3px #ffff8088;
+      transform: translateY(-50%);
+      pointer-events: none; display: none; z-index: 10;
+    }
+
+    /* ── Tooltip ─────────────────────────────────────────── */
+    #tip {
+      position: fixed; z-index: 100;
+      background: rgba(4,10,22,.96);
+      border: 1px solid rgba(74,158,255,.35);
+      border-radius: 10px; padding: 14px 18px;
+      min-width: 230px; max-width: 280px;
+      pointer-events: none; opacity: 0;
+      transition: opacity .15s;
+      backdrop-filter: blur(14px);
+    }
+    #tip.show { opacity: 1; }
+
+    .tip-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+    .tip-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .tip-row  {
+      display: flex; justify-content: space-between;
+      font-size: 11px; padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .tip-row:last-of-type { border-bottom: none; }
+    .tip-k { color: var(--muted); }
+    .tip-v { color: var(--accent); font-weight: 500; }
+    .tip-fact {
+      font-size: 11px; color: #ffd700; margin-top: 9px;
+      font-style: italic; line-height: 1.5; border-top: 1px solid rgba(255,255,255,.06);
+      padding-top: 9px;
+    }
+
+    /* ── HUD ─────────────────────────────────────────────── */
+    .hud {
+      position: fixed; top: 90px; right: 18px;
+      background: var(--ui-bg); border: 1px solid var(--ui-border);
+      border-radius: 8px; padding: 10px 16px;
+      font-size: 11px; color: var(--muted); z-index: 15;
+      backdrop-filter: blur(10px); text-align: right;
+    }
+    .hud-val { font-size: 20px; font-weight: 700; color: var(--accent); display: block; }
+    .hud-km  { font-size: 12px; color: #4a9eff99; }
+
+    /* ── Progress ────────────────────────────────────────── */
+    .progress {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 3px; background: rgba(255,255,255,.04); z-index: 20;
+    }
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #ff6600, var(--accent));
+      transition: width .08s;
+    }
+
+    /* ── Hint ────────────────────────────────────────────── */
+    .hint {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      font-size: 12px; color: var(--muted);
+      background: var(--ui-bg); border: 1px solid var(--ui-border);
+      padding: 5px 18px; border-radius: 20px;
+      pointer-events: none; z-index: 15;
+      transition: opacity 1s;
+      backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Infinite Knowledge · Science · Astronomy · Feature 2</div>
+    <div class="hed">Solar System — Scale Distance Model</div>
+  </div>
+  <div class="scale-pill">Distances to scale &nbsp;·&nbsp; Planet sizes enhanced for visibility</div>
+</header>
+
+<nav id="nav">
+  <span class="nav-label">Jump to</span>
+  <button class="nav-btn" onclick="jumpTo('sun')">
+    <span class="ndot" style="background:#FDB813;box-shadow:0 0 5px #FDB813"></span>Sun
+  </button>
+</nav>
+
+<div class="viewport" id="vp">
+  <div class="track" id="track">
+    <canvas id="stars"></canvas>
+    <div class="orbit-line"></div>
+    <div class="pulse" id="pulse"></div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<div class="hud">
+  <span class="hud-val" id="auVal">0.00</span>
+  AU from Sun
+  <div class="hud-km" id="kmVal">0 km</div>
+</div>
+
+<div class="progress"><div class="progress-fill" id="pbar"></div></div>
+<div class="hint" id="hint">← Scroll or drag to travel the solar system · Hover planets for details →</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────────
+const AU_PX      = 310;   // pixels per 1 AU
+const SUN_LEFT   = 110;   // px from left edge to sun centre
+const SUN_R_PX   = 68;    // visual sun radius in px
+const SUN_R_KM   = 696000;
+const SIZE_SCALE = SUN_R_PX / SUN_R_KM;
+const MIN_R      = 4;     // minimum planet radius in px
+const AU_KM      = 149_597_870;
+
+// ── Planet data ────────────────────────────────────────────────────────────────
+const PLANETS = [
+  {
+    id: 'mercury', name: 'Mercury',
+    au: 0.387, rkm: 2440, color: '#a8a8a8', moons: 0,
+    desc: 'Smallest planet · Closest to Sun',
+    fact: 'A year on Mercury lasts just 88 Earth days, yet a single day (sunrise to sunrise) stretches 176 Earth days — it rotates so slowly that the Sun rises, nearly stops, reverses, and sets.',
+    period: '88 Earth days', lightMin: 3.2,
+  },
+  {
+    id: 'venus', name: 'Venus',
+    au: 0.723, rkm: 6051, color: '#e8cda0', moons: 0,
+    desc: 'Hottest planet · Spins backwards',
+    fact: 'Venus is hotter than Mercury (462 °C average) despite being farther from the Sun. Its thick CO₂ atmosphere traps heat in a runaway greenhouse effect.',
+    period: '225 Earth days', lightMin: 6.0,
+  },
+  {
+    id: 'earth', name: 'Earth',
+    au: 1.000, rkm: 6371, color: '#4fa3e3', moons: 1,
+    desc: 'Our home · Only confirmed life in the universe',
+    fact: 'Earth is the densest planet in the Solar System and the only one with active plate tectonics — a geological process that recycles carbon and stabilises the climate over billions of years.',
+    period: '365.25 days', lightMin: 8.3,
+  },
+  {
+    id: 'mars', name: 'Mars',
+    au: 1.524, rkm: 3390, color: '#c1440e', moons: 2,
+    desc: 'The Red Planet · Home of Olympus Mons',
+    fact: 'Olympus Mons is 22 km tall — nearly three times the height of Everest — and so wide (600 km across) that you could not see its edges from its peak due to the curvature of Mars.',
+    period: '687 Earth days', lightMin: 12.7,
+  },
+  {
+    id: 'jupiter', name: 'Jupiter',
+    au: 5.203, rkm: 69911, color: '#c88b3a', moons: 95,
+    desc: 'Largest planet · 1,300 Earths could fit inside',
+    fact: "Jupiter's Great Red Spot is a storm wider than Earth that has raged for at least 350 years. Jupiter also acts as the Solar System's vacuum cleaner, its gravity deflecting or capturing many incoming comets.",
+    period: '11.9 Earth years', lightMin: 43.3,
+  },
+  {
+    id: 'saturn', name: 'Saturn',
+    au: 9.537, rkm: 58232, color: '#e4d191', moons: 146,
+    desc: 'Ringed giant · Less dense than water',
+    desc2: 'Rings span 282,000 km yet are only ~100 m thick',
+    fact: "Saturn's rings are 95% water ice. Despite spanning a distance equal to ¾ of the Earth–Moon gap, they are thinner relative to their width than a sheet of paper.",
+    period: '29.5 Earth years', lightMin: 79.3,
+    rings: true,
+  },
+  {
+    id: 'uranus', name: 'Uranus',
+    au: 19.19, rkm: 25362, color: '#7de8e8', moons: 27,
+    desc: 'Ice giant · Tilted 98° on its side',
+    fact: "Uranus rotates on its side — probably knocked over by a collision billions of years ago. Its poles experience 42 years of continuous sunlight, then 42 years of total darkness.",
+    period: '84 Earth years', lightMin: 159.6,
+  },
+  {
+    id: 'neptune', name: 'Neptune',
+    au: 30.07, rkm: 24622, color: '#4b70dd', moons: 16,
+    desc: 'Farthest planet · Windiest world in the Solar System',
+    fact: 'Neptune was discovered by mathematics before it was seen through a telescope — astronomers predicted its location from irregularities in Uranus\'s orbit. Its winds exceed 2,100 km/h.',
+    period: '165 Earth years', lightMin: 249.4,
+  },
+];
+
+const SUN_DATA = {
+  name: 'The Sun', color: '#FDB813',
+  desc: 'G-type main-sequence star · 4.6 billion years old',
+  fact: 'The Sun contains 99.86% of all mass in the Solar System. Every second it converts 600 million tonnes of hydrogen into helium — yet it has enough fuel for another 5 billion years.',
+  rkm: 696000, tempK: '5,778 K (surface) · 15,000,000 K (core)', age: '4.6 billion years',
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function planetR(rkm) { return Math.max(MIN_R, Math.round(rkm * SIZE_SCALE)); }
+function distPx(au)    { return SUN_LEFT + SUN_R_PX + Math.round(au * AU_PX); }
+function fmtKm(km) {
+  if (km >= 1e9) return (km / 1e9).toFixed(2) + 'B km';
+  if (km >= 1e6) return (km / 1e6).toFixed(1) + 'M km';
+  if (km >= 1e3) return (km / 1e3).toFixed(0) + 'K km';
+  return km.toFixed(0) + ' km';
+}
+function fmtLight(min) {
+  if (min >= 60) return `${Math.floor(min/60)}h ${Math.round(min%60)}m`;
+  return `${min} min`;
+}
+function lighten(hex) {
+  const [r,g,b] = parseHex(hex);
+  return `rgb(${Math.min(255,r+70)},${Math.min(255,g+70)},${Math.min(255,b+70)})`;
+}
+function darken(hex) {
+  const [r,g,b] = parseHex(hex);
+  return `rgb(${Math.max(0,r-50)},${Math.max(0,g-50)},${Math.max(0,b-50)})`;
+}
+function parseHex(hex) {
+  const h = hex.replace('#','');
+  if (h.length === 3) return [parseInt(h[0]+h[0],16), parseInt(h[1]+h[1],16), parseInt(h[2]+h[2],16)];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+
+// ── Stars ──────────────────────────────────────────────────────────────────────
+function buildStars() {
+  const c = document.getElementById('stars');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const ctx = c.getContext('2d');
+  for (let i = 0; i < 900; i++) {
+    const x = Math.random() * c.width;
+    const y = Math.random() * c.height;
+    const r = Math.random() * 1.3;
+    const a = 0.25 + Math.random() * 0.75;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fill();
+  }
+}
+
+// ── Build scene ────────────────────────────────────────────────────────────────
+function build() {
+  const track = document.getElementById('track');
+  const nav   = document.getElementById('nav');
+  const neptunePx = distPx(30.07);
+  track.style.width = (neptunePx + 250) + 'px';
+
+  // Sun
+  const sun = div('sun-body');
+  const sunD = SUN_R_PX * 2;
+  Object.assign(sun.style, {
+    left: (SUN_LEFT - SUN_R_PX) + 'px',
+    width: sunD + 'px', height: sunD + 'px',
+    background: 'radial-gradient(circle at 38% 38%, #fff8d0, #FDB813 50%, #e05500)',
+    boxShadow: [
+      `0 0 ${SUN_R_PX*.6}px ${SUN_R_PX*.25}px rgba(255,140,0,.5)`,
+      `0 0 ${SUN_R_PX*1.8}px ${SUN_R_PX*.6}px rgba(253,184,19,.2)`,
+      `0 0 ${SUN_R_PX*4}px  ${SUN_R_PX*1.5}px rgba(255,80,0,.08)`,
+    ].join(','),
+    transform: 'translateY(-50%)',
+  });
+  on(sun, SUN_DATA, true);
+  track.appendChild(sun);
+
+  label(track, SUN_LEFT, '☀ The Sun', null);
+
+  PLANETS.forEach(p => {
+    const px = distPx(p.au);
+    const r  = planetR(p.rkm);
+
+    // Saturn rings (behind planet)
+    if (p.rings) {
+      const rw = r * 4.8, rh = r * 1.6;
+      const ring = div('ring');
+      Object.assign(ring.style, {
+        left: (px - rw/2) + 'px',
+        width: rw + 'px', height: rh + 'px',
+        transform: 'translateY(-50%)',
+        border: `${Math.max(2, r*.45)}px solid rgba(220,190,130,.55)`,
+        boxShadow: `inset 0 0 ${r*.5}px rgba(200,170,110,.3), 0 0 ${r*.3}px rgba(200,170,110,.2)`,
+      });
+      track.appendChild(ring);
+    }
+
+    // Planet
+    const el = div('body');
+    Object.assign(el.style, {
+      left: px + 'px',
+      width: r*2 + 'px', height: r*2 + 'px',
+      background: `radial-gradient(circle at 34% 32%, ${lighten(p.color)}, ${p.color} 60%, ${darken(p.color)})`,
+      boxShadow: `0 0 ${r}px ${r*.35}px ${p.color}44`,
+    });
+    on(el, p, false);
+    track.appendChild(el);
+
+    label(track, px, p.name, null);
+    dist(track, px, p.au);
+
+    // Nav button
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.innerHTML = `<span class="ndot" style="background:${p.color}"></span>${p.name}`;
+    btn.onclick = () => jumpTo(p.id);
+    el.id = p.id;
+    nav.appendChild(btn);
+  });
+
+  // Light button
+  const lb = document.createElement('button');
+  lb.id = 'lbtn'; lb.className = 'light-btn';
+  lb.textContent = '⚡ Speed-of-Light Journey';
+  lb.onclick = toggleLight;
+  nav.appendChild(lb);
+}
+
+function div(cls) {
+  const el = document.createElement('div');
+  if (cls) el.className = cls;
+  return el;
+}
+function label(track, px, text) {
+  const el = div('plabel');
+  el.style.left = px + 'px'; el.textContent = text;
+  track.appendChild(el);
+}
+function dist(track, px, au) {
+  const el = div('pdist');
+  el.style.left = px + 'px';
+  el.innerHTML = `${au} AU<br>${fmtKm(au * AU_KM)}`;
+  track.appendChild(el);
+}
+
+// ── Tooltip ────────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+let tipOpen = false;
+
+function on(el, data, isSun) {
+  el.addEventListener('mouseenter', e => { showTip(e, data, isSun); });
+  el.addEventListener('mousemove',  e => { moveTip(e); });
+  el.addEventListener('mouseleave', hideTip);
+}
+
+function showTip(e, d, isSun) {
+  tipOpen = true;
+  if (isSun) {
+    tip.innerHTML = `
+      <div class="tip-name">☀ ${d.name}</div>
+      <div class="tip-desc">${d.desc}</div>
+      <div class="tip-row"><span class="tip-k">Radius</span><span class="tip-v">${fmtKm(d.rkm)}</span></div>
+      <div class="tip-row"><span class="tip-k">Temperature</span><span class="tip-v">${d.tempK}</span></div>
+      <div class="tip-row"><span class="tip-k">Age</span><span class="tip-v">${d.age}</span></div>
+      <div class="tip-row"><span class="tip-k">Composition</span><span class="tip-v">74% H · 24% He</span></div>
+      <div class="tip-fact">💡 ${d.fact}</div>`;
+  } else {
+    tip.innerHTML = `
+      <div class="tip-name">${d.name}</div>
+      <div class="tip-desc">${d.desc}</div>
+      <div class="tip-row"><span class="tip-k">Distance from Sun</span><span class="tip-v">${d.au} AU</span></div>
+      <div class="tip-row"><span class="tip-k">Distance in km</span><span class="tip-v">${fmtKm(d.au * AU_KM)}</span></div>
+      <div class="tip-row"><span class="tip-k">Radius</span><span class="tip-v">${fmtKm(d.rkm)}</span></div>
+      <div class="tip-row"><span class="tip-k">Moons</span><span class="tip-v">${d.moons}</span></div>
+      <div class="tip-row"><span class="tip-k">Orbital period</span><span class="tip-v">${d.period}</span></div>
+      <div class="tip-row"><span class="tip-k">Light travel time</span><span class="tip-v">${fmtLight(d.lightMin)}</span></div>
+      <div class="tip-fact">💡 ${d.fact}</div>`;
+  }
+  tip.classList.add('show');
+  moveTip(e);
+}
+function moveTip(e) {
+  if (!tipOpen) return;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = e.clientX + 18, y = e.clientY - 12;
+  if (x + tw > window.innerWidth - 12)  x = e.clientX - tw - 18;
+  if (y + th > window.innerHeight - 12) y = window.innerHeight - th - 12;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tipOpen = false; tip.classList.remove('show'); }
+
+// ── Navigation ─────────────────────────────────────────────────────────────────
+function jumpTo(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const vp = document.getElementById('vp');
+  const cx = parseFloat(el.style.left);
+  vp.scrollTo({ left: cx - window.innerWidth / 2, behavior: 'smooth' });
+}
+
+// ── Progress + HUD ─────────────────────────────────────────────────────────────
+document.getElementById('vp').addEventListener('scroll', function() {
+  const track = document.getElementById('track');
+  const maxS  = track.offsetWidth - window.innerWidth;
+  const ratio = this.scrollLeft / maxS;
+  document.getElementById('pbar').style.width = (ratio * 100) + '%';
+
+  const centrePx = this.scrollLeft + window.innerWidth/2 - SUN_LEFT - SUN_R_PX;
+  const au = Math.max(0, centrePx / AU_PX);
+  document.getElementById('auVal').textContent = au.toFixed(2);
+  document.getElementById('kmVal').textContent = fmtKm(au * AU_KM);
+
+  document.getElementById('hint').style.opacity = '0';
+});
+
+// ── Drag to scroll ─────────────────────────────────────────────────────────────
+const vp = document.getElementById('vp');
+let dragging = false, dragStartX = 0, scrollStart = 0;
+vp.addEventListener('mousedown',  e => { dragging = true; dragStartX = e.clientX; scrollStart = vp.scrollLeft; });
+window.addEventListener('mousemove', e => { if (dragging) vp.scrollLeft = scrollStart - (e.clientX - dragStartX); });
+window.addEventListener('mouseup',   () => dragging = false);
+
+// ── Keyboard ───────────────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') vp.scrollLeft += 200;
+  if (e.key === 'ArrowLeft')  vp.scrollLeft -= 200;
+});
+
+// ── Speed-of-Light animation ───────────────────────────────────────────────────
+// Real: light takes 8.3 min to reach Earth (1 AU).
+// Animated at 500× speed: 1 AU crossed in ~1 second visually.
+const LIGHT_PX_PER_MS = AU_PX / 1000; // 1 AU in 1000ms
+let lightRaf = null;
+
+function toggleLight() {
+  const btn = document.getElementById('lbtn');
+  if (lightRaf) {
+    cancelAnimationFrame(lightRaf);
+    lightRaf = null;
+    document.getElementById('pulse').style.display = 'none';
+    btn.classList.remove('active');
+    btn.textContent = '⚡ Speed-of-Light Journey';
+    return;
+  }
+  btn.classList.add('active');
+  btn.textContent = '⏹ Stop';
+  jumpTo('sun');
+
+  setTimeout(() => {
+    const pulse = document.getElementById('pulse');
+    const maxPx = distPx(30.07) + 60;
+    let curPx = SUN_LEFT + SUN_R_PX;
+    let lastT = null;
+    pulse.style.display = 'block';
+
+    function step(t) {
+      if (!lastT) lastT = t;
+      curPx += LIGHT_PX_PER_MS * (t - lastT);
+      lastT = t;
+      pulse.style.left = curPx + 'px';
+      vp.scrollLeft = curPx - window.innerWidth * 0.45;
+
+      if (curPx < maxPx) {
+        lightRaf = requestAnimationFrame(step);
+      } else {
+        pulse.style.display = 'none';
+        lightRaf = null;
+        btn.classList.remove('active');
+        btn.textContent = '⚡ Speed-of-Light Journey';
+      }
+    }
+    lightRaf = requestAnimationFrame(step);
+  }, 700);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildStars();
+build();
+setTimeout(() => document.getElementById('hint').style.opacity = '0', 5000);
+</script>
+</body>
+</html>
