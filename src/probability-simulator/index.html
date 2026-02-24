@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Probability Simulator | Infinite Knowledge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --surface:   #0c1528;
+      --surface2:  #111e38;
+      --ui-bg:     rgba(8,16,34,.94);
+      --ui-border: rgba(255,255,255,.08);
+      --text:      #dde4f0;
+      --muted:     #6b7a94;
+      --accent:    #4a9eff;
+      --green:     #3ecf8e;
+      --yellow:    #ffd700;
+      --red:       #ff6b6b;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      padding: 10px 20px;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; z-index: 20; backdrop-filter: blur(12px);
+    }
+    .brand { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .hed   { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .tag   {
+      font-size: 11px; color: var(--green);
+      background: rgba(62,207,142,.1);
+      border: 1px solid rgba(62,207,142,.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ── Main layout ─────────────────────────────────────── */
+    .main {
+      flex: 1; padding: 20px;
+      display: flex; flex-direction: column; gap: 16px;
+      max-width: 1200px; margin: 0 auto; width: 100%;
+    }
+
+    /* ── Control panel ───────────────────────────────────── */
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .ctrl-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+
+    .ctrl-label {
+      font-size: 11px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .07em; width: 80px; flex-shrink: 0;
+    }
+
+    /* Experiment picker */
+    .exp-btn {
+      padding: 7px 18px; border-radius: 6px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--muted);
+      font-size: 13px; cursor: pointer;
+      transition: all .15s;
+    }
+    .exp-btn:hover  { background: rgba(255,255,255,.05); color: var(--text); }
+    .exp-btn.active { background: rgba(74,158,255,.15); border-color: var(--accent); color: var(--accent); }
+
+    /* Custom sides */
+    .custom-sides { display: none; align-items: center; gap: 10px; }
+    .custom-sides.show { display: flex; }
+    .custom-sides input[type=range] {
+      accent-color: var(--accent); width: 120px; cursor: pointer;
+    }
+    .custom-sides .sides-val {
+      font-size: 14px; font-weight: 700; color: var(--accent); width: 24px;
+    }
+
+    /* Run buttons */
+    .run-btn {
+      padding: 7px 16px; border-radius: 6px;
+      border: 1px solid var(--ui-border);
+      background: rgba(74,158,255,.08); color: var(--accent);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all .12s;
+    }
+    .run-btn:hover   { background: rgba(74,158,255,.2); border-color: var(--accent); }
+    .run-btn:active  { transform: scale(.96); }
+
+    .auto-btn {
+      padding: 7px 18px; border-radius: 6px;
+      border: 1px solid rgba(62,207,142,.3);
+      background: rgba(62,207,142,.08); color: var(--green);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .auto-btn.running {
+      background: rgba(62,207,142,.2); border-color: var(--green);
+      animation: pulse-green 1.2s infinite;
+    }
+    @keyframes pulse-green {
+      0%,100% { box-shadow: 0 0 0 0 rgba(62,207,142,.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(62,207,142,0); }
+    }
+
+    .speed-select {
+      padding: 6px 10px; border-radius: 6px;
+      border: 1px solid var(--ui-border);
+      background: var(--surface2); color: var(--text);
+      font-size: 12px; cursor: pointer;
+    }
+
+    .reset-btn {
+      padding: 7px 14px; border-radius: 6px;
+      border: 1px solid rgba(255,107,107,.25);
+      background: transparent; color: var(--red);
+      font-size: 13px; cursor: pointer;
+      transition: all .15s; margin-left: auto;
+    }
+    .reset-btn:hover { background: rgba(255,107,107,.1); border-color: var(--red); }
+
+    /* ── Charts row ──────────────────────────────────────── */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 700px) { .charts { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .chart-title {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+
+    canvas {
+      width: 100%; border-radius: 4px;
+      display: block;
+    }
+
+    /* ── Stats strip ─────────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-val   { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Outcome table ───────────────────────────────────── */
+    .outcome-table {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .outcome-table table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .outcome-table th {
+      padding: 10px 14px; text-align: left;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid var(--ui-border);
+    }
+    .outcome-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .outcome-table tr:last-child td { border-bottom: none; }
+    .outcome-table .swatch {
+      display: inline-block; width: 10px; height: 10px;
+      border-radius: 50%; margin-right: 7px; vertical-align: middle;
+    }
+    .deviation { font-weight: 600; }
+    .deviation.close { color: var(--green); }
+    .deviation.far   { color: var(--yellow); }
+    .deviation.far2  { color: var(--red); }
+
+    .progress-bar-row {
+      height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; margin-top: 4px;
+    }
+    .progress-bar-fill { height: 100%; border-radius: 2px; transition: width .15s; }
+
+    /* ── Insight box ─────────────────────────────────────── */
+    .insight {
+      background: rgba(74,158,255,.06);
+      border: 1px solid rgba(74,158,255,.2);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: 13px; line-height: 1.6; color: var(--text);
+    }
+    .insight strong { color: var(--accent); }
+    .insight .insight-head {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--accent); margin-bottom: 6px;
+    }
+
+    /* ── Flip animation ──────────────────────────────────── */
+    .flip-display {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 52px; min-height: 70px;
+      transition: transform .1s;
+    }
+    .flip-display.flip { animation: flip .25s ease; }
+    @keyframes flip {
+      0%   { transform: rotateY(0deg) scale(1); }
+      50%  { transform: rotateY(90deg) scale(.7); }
+      100% { transform: rotateY(0deg) scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Infinite Knowledge · Mathematics · Statistics &amp; Probability · Feature 2</div>
+    <div class="hed">Probability Simulator</div>
+  </div>
+  <div class="tag">Law of Large Numbers</div>
+</header>
+
+<div class="main">
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-row">
+      <span class="ctrl-label">Experiment</span>
+      <button class="exp-btn active" id="btnCoin"   onclick="setExp('coin')">🪙 Coin Flip</button>
+      <button class="exp-btn"        id="btnDie"    onclick="setExp('die')">🎲 Six-sided Die</button>
+      <button class="exp-btn"        id="btnCustom" onclick="setExp('custom')">🎯 Custom</button>
+      <div class="custom-sides" id="customSides">
+        <input type="range" id="sidesSlider" min="2" max="20" value="8"
+               oninput="onSidesChange(this.value)" />
+        <span class="sides-val" id="sidesVal">8</span>
+        <span style="font-size:12px;color:var(--muted)">sides</span>
+      </div>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Run trials</span>
+      <button class="run-btn" onclick="run(1)">+1</button>
+      <button class="run-btn" onclick="run(10)">+10</button>
+      <button class="run-btn" onclick="run(100)">+100</button>
+      <button class="run-btn" onclick="run(1000)">+1 K</button>
+      <button class="run-btn" onclick="run(10000)">+10 K</button>
+      <button class="run-btn" onclick="run(100000)">+100 K</button>
+      <button class="auto-btn" id="autoBtn" onclick="toggleAuto()">▶ Auto-run</button>
+      <select class="speed-select" id="speedSel">
+        <option value="1">Slow (1/frame)</option>
+        <option value="10">Medium (10/frame)</option>
+        <option value="100" selected>Fast (100/frame)</option>
+        <option value="1000">Turbo (1K/frame)</option>
+      </select>
+      <button class="reset-btn" onclick="reset()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Visual outcome + Charts -->
+  <div class="charts">
+    <!-- Bar chart card -->
+    <div class="chart-card">
+      <div class="chart-title">Observed Frequency</div>
+      <div class="flip-display" id="flipDisplay">🪙</div>
+      <canvas id="barCanvas" height="220"></canvas>
+    </div>
+
+    <!-- Convergence chart card -->
+    <div class="chart-card">
+      <div class="chart-title">Convergence to True Probability</div>
+      <canvas id="convCanvas" height="280"></canvas>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Trials</div>
+      <div class="stat-val" id="statTotal">0</div>
+      <div class="stat-sub">experiments run</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Expected per Outcome</div>
+      <div class="stat-val" id="statExpected">—</div>
+      <div class="stat-sub" id="statExpectedSub">theoretical probability</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Most Common</div>
+      <div class="stat-val" id="statMode">—</div>
+      <div class="stat-sub" id="statModeSub">leading by —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Deviation</div>
+      <div class="stat-val" id="statDev">—</div>
+      <div class="stat-sub">observed vs expected</div>
+    </div>
+  </div>
+
+  <!-- Outcome table -->
+  <div class="outcome-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Outcome</th>
+          <th>Count</th>
+          <th>Observed %</th>
+          <th>Expected %</th>
+          <th>Deviation</th>
+          <th style="width:20%">Frequency</th>
+        </tr>
+      </thead>
+      <tbody id="outcomeBody">
+        <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">
+          Run some trials to see results
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Insight -->
+  <div class="insight">
+    <div class="insight-head">💡 Law of Large Numbers</div>
+    <div id="insightText">
+      The <strong>Law of Large Numbers</strong> states that as the number of trials increases,
+      the observed (empirical) probability of each outcome converges toward its true
+      (theoretical) probability. Run a small number of trials and you will see wild swings —
+      run thousands and the results will settle close to the expected values.
+      <br><br>
+      Try it: flip the coin 10 times, then 10,000 times. Watch the bar chart even out
+      and the convergence line home in on 50%.
+    </div>
+  </div>
+
+</div><!-- .main -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let sides    = 2;
+let labels   = ['Heads', 'Tails'];
+let emojis   = ['🟡', '⚪'];
+let colors   = ['#4a9eff', '#ff6b6b', '#3ecf8e', '#ffd700', '#b47aff', '#ff9f4a',
+                '#e8cda0', '#7de8e8', '#c1440e', '#a8a8a8', '#e4d191', '#4b70dd',
+                '#4fa3e3', '#c88b3a', '#FDB813', '#c1440e', '#7de8e8', '#b5b5b5',
+                '#e8cda0', '#3ecf8e'];
+let counts   = [0, 0];
+let total    = 0;
+let history  = [];       // [{t, probs: [p0, p1, ...]}, ...]  sparse
+let lastResult = 0;
+let autoRaf  = null;
+let histSample = 0;      // controls how often we sample history
+
+// ── Experiments ────────────────────────────────────────────────────────────────
+const EXPERIMENTS = {
+  coin:   { sides: 2,  labels: ['Heads', 'Tails'],             emojis: ['🟡', '⚪'] },
+  die:    { sides: 6,  labels: ['1','2','3','4','5','6'],       emojis: ['⚀','⚁','⚂','⚃','⚄','⚅'] },
+  custom: { sides: 8,  labels: null /* auto-generated */,      emojis: null },
+};
+let currentExp = 'coin';
+
+function setExp(name) {
+  currentExp = name;
+  document.querySelectorAll('.exp-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+
+  const custom = document.getElementById('customSides');
+  if (name === 'custom') {
+    custom.classList.add('show');
+    sides = +document.getElementById('sidesSlider').value;
+  } else {
+    custom.classList.remove('show');
+    sides = EXPERIMENTS[name].sides;
+  }
+  buildLabels();
+  reset();
+}
+
+function onSidesChange(v) {
+  document.getElementById('sidesVal').textContent = v;
+  sides = +v;
+  buildLabels();
+  reset();
+}
+
+function buildLabels() {
+  const exp = EXPERIMENTS[currentExp];
+  if (exp.labels) {
+    labels = exp.labels;
+    emojis = exp.emojis;
+  } else {
+    labels = Array.from({length: sides}, (_, i) => String(i + 1));
+    emojis = Array.from({length: sides}, (_, i) => dieEmoji(i + 1));
+  }
+}
+
+function dieEmoji(n) {
+  return ['⚀','⚁','⚂','⚃','⚄','⚅'][n-1] || '🎯';
+}
+
+// ── Core engine ────────────────────────────────────────────────────────────────
+function roll() {
+  return Math.floor(Math.random() * sides);
+}
+
+function run(n) {
+  for (let i = 0; i < n; i++) {
+    const r = roll();
+    counts[r]++;
+    total++;
+    lastResult = r;
+  }
+  // Sample history — densely at first, then every √total
+  const sampleEvery = total < 100 ? 1 : total < 1000 ? 10 : Math.floor(Math.sqrt(total / 10));
+  histSample += n;
+  if (histSample >= sampleEvery || n === 1) {
+    histSample = 0;
+    history.push({ t: total, probs: counts.map(c => c / total) });
+  }
+  // Flash animation for single trial
+  if (n === 1) flashResult(lastResult);
+  render();
+}
+
+function reset() {
+  counts  = new Array(sides).fill(0);
+  total   = 0;
+  history = [];
+  histSample = 0;
+  lastResult  = 0;
+  stopAuto();
+  updateFlipDisplay('');
+  render();
+}
+
+// ── Auto-run ───────────────────────────────────────────────────────────────────
+function toggleAuto() {
+  if (autoRaf) { stopAuto(); return; }
+  const btn = document.getElementById('autoBtn');
+  btn.classList.add('running');
+  btn.textContent = '⏹ Stop';
+  function frame() {
+    const speed = +document.getElementById('speedSel').value;
+    run(speed);
+    autoRaf = requestAnimationFrame(frame);
+  }
+  autoRaf = requestAnimationFrame(frame);
+}
+function stopAuto() {
+  if (autoRaf) { cancelAnimationFrame(autoRaf); autoRaf = null; }
+  const btn = document.getElementById('autoBtn');
+  btn.classList.remove('running');
+  btn.textContent = '▶ Auto-run';
+}
+
+// ── Flip display ───────────────────────────────────────────────────────────────
+let flipTimeout = null;
+function flashResult(idx) {
+  const el = document.getElementById('flipDisplay');
+  el.classList.remove('flip');
+  void el.offsetWidth; // reflow to restart animation
+  el.textContent = (emojis && emojis[idx]) ? emojis[idx] : labels[idx];
+  el.classList.add('flip');
+  clearTimeout(flipTimeout);
+  flipTimeout = setTimeout(() => el.classList.remove('flip'), 300);
+}
+function updateFlipDisplay(txt) {
+  document.getElementById('flipDisplay').textContent = txt || (emojis ? emojis[0] : labels[0] || '🪙');
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────────
+function render() {
+  renderBar();
+  renderConv();
+  renderStats();
+  renderTable();
+  renderInsight();
+}
+
+// Palette
+function getColor(i) { return colors[i % colors.length]; }
+
+// ── Bar chart ──────────────────────────────────────────────────────────────────
+function renderBar() {
+  const canvas = document.getElementById('barCanvas');
+  const W = canvas.parentElement.offsetWidth - 32;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = 220 * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = '220px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const w = W, h = 220;
+  const pad = { top: 16, right: 16, bottom: 36, left: 46 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top  - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (total === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    ctx.font = '13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Run trials to see frequency chart', w/2, h/2);
+    return;
+  }
+
+  const expected = 1 / sides;
+  const maxProp  = Math.max(expected * 1.5, ...counts.map(c => c / total)) * 1.08;
+  const barW     = Math.floor((cw / sides) * 0.7);
+  const gap      = (cw / sides) - barW;
+
+  // Y axis labels
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.font = `${11 * Math.min(1, 600/w)}px system-ui`;
+  ctx.textAlign = 'right';
+  for (let pct = 0; pct <= 1; pct += 0.25) {
+    const yv = pct * expected * 2;
+    if (yv > maxProp) break;
+    const y = pad.top + ch - (yv / maxProp) * ch;
+    ctx.fillText((yv * 100).toFixed(0) + '%', pad.left - 5, y + 4);
+    ctx.strokeStyle = 'rgba(255,255,255,.04)';
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+  }
+
+  // Expected line
+  const expY = pad.top + ch - (expected / maxProp) * ch;
+  ctx.strokeStyle = 'rgba(255,215,0,.5)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.left, expY); ctx.lineTo(pad.left + cw, expY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,215,0,.7)'; ctx.textAlign = 'left'; ctx.font = '10px system-ui';
+  ctx.fillText('expected', pad.left + 4, expY - 4);
+
+  // Bars
+  counts.forEach((c, i) => {
+    const prop = total ? c / total : 0;
+    const bh   = (prop / maxProp) * ch;
+    const x    = pad.left + i * (barW + gap) + gap / 2;
+    const y    = pad.top + ch - bh;
+    const col  = getColor(i);
+
+    // Bar fill with gradient
+    const grad = ctx.createLinearGradient(0, y, 0, pad.top + ch);
+    grad.addColorStop(0, col);
+    grad.addColorStop(1, col + '44');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, bh, [3,3,0,0]);
+    ctx.fill();
+
+    // Percentage label on bar
+    if (bh > 18) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.min(12, barW * 0.4)}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText((prop * 100).toFixed(1) + '%', x + barW/2, y + 14);
+    }
+
+    // X axis label
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.font = `${Math.min(12, barW * 0.45)}px system-ui`;
+    ctx.textAlign = 'center';
+    const lbl = (emojis && emojis[i] && sides <= 10) ? emojis[i] : labels[i];
+    ctx.fillText(lbl, x + barW/2, pad.top + ch + 18);
+  });
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ch + 2);
+  ctx.moveTo(pad.left, pad.top + ch + 2); ctx.lineTo(pad.left + cw, pad.top + ch + 2);
+  ctx.stroke();
+}
+
+// ── Convergence chart ──────────────────────────────────────────────────────────
+function renderConv() {
+  const canvas = document.getElementById('convCanvas');
+  const W = canvas.parentElement.offsetWidth - 32;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = 280 * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = '280px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const w = W, h = 280;
+  const pad = { top: 16, right: 16, bottom: 40, left: 46 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top  - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (history.length < 2) {
+    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    ctx.font = '13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Run more trials to see convergence', w/2, h/2);
+    return;
+  }
+
+  const expected = 1 / sides;
+  const maxT = history[history.length - 1].t;
+
+  // Y axis (0 to 1, with expected marked)
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'right';
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(v => {
+    const y = pad.top + ch - v * ch;
+    ctx.fillText((v * 100).toFixed(0) + '%', pad.left - 5, y + 4);
+    ctx.strokeStyle = 'rgba(255,255,255,.04)';
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // X axis labels (log-style if large)
+  const ticks = logTicks(maxT);
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.textAlign = 'center'; ctx.font = '10px system-ui';
+  ticks.forEach(t => {
+    const x = pad.left + (Math.log10(t) / Math.log10(maxT)) * cw;
+    ctx.fillText(fmtN(t), x, pad.top + ch + 26);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ch); ctx.stroke();
+  });
+
+  // X axis label
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.textAlign = 'center'; ctx.font = '11px system-ui';
+  ctx.fillText('Number of trials', pad.left + cw / 2, pad.top + ch + 38);
+
+  // Expected band (±5% of expected)
+  const band = 0.05 * expected;
+  const yHi  = pad.top + ch - Math.min(1, expected + band) * ch;
+  const yLo  = pad.top + ch - Math.max(0, expected - band) * ch;
+  ctx.fillStyle = 'rgba(255,215,0,.06)';
+  ctx.fillRect(pad.left, yHi, cw, yLo - yHi);
+
+  // Expected line
+  const expY = pad.top + ch - expected * ch;
+  ctx.strokeStyle = 'rgba(255,215,0,.55)';
+  ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.left, expY); ctx.lineTo(pad.left + cw, expY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,215,0,.6)'; ctx.textAlign = 'left'; ctx.font = '10px system-ui';
+  ctx.fillText('expected ' + (expected * 100).toFixed(1) + '%', pad.left + 4, expY - 4);
+
+  // Draw a line per outcome (up to 6 for readability)
+  const showN = Math.min(sides, 6);
+  for (let oi = 0; oi < showN; oi++) {
+    const col = getColor(oi);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = sides <= 2 ? 2 : 1.5;
+    ctx.globalAlpha = sides <= 2 ? 1 : 0.75;
+    ctx.beginPath();
+    let first = true;
+    history.forEach(pt => {
+      if (pt.t < 1) return;
+      const x = pad.left + (Math.log10(pt.t) / Math.log10(maxT)) * cw;
+      const y = pad.top + ch - pt.probs[oi] * ch;
+      if (first) { ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  if (showN < sides) {
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+    ctx.fillText(`showing ${showN} of ${sides} outcomes`, pad.left + cw, pad.top + 12);
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + ch + 2);
+  ctx.moveTo(pad.left, pad.top + ch + 2); ctx.lineTo(pad.left + cw, pad.top + ch + 2);
+  ctx.stroke();
+}
+
+function logTicks(maxT) {
+  const ticks = [1];
+  let v = 1;
+  while (v < maxT) { v *= 10; if (v <= maxT) ticks.push(v); }
+  // add 5x intermediate ticks
+  const full = [];
+  ticks.forEach((t, i) => {
+    full.push(t);
+    if (i < ticks.length - 1 && t * 5 <= maxT) full.push(t * 5);
+  });
+  return full;
+}
+
+function fmtN(n) {
+  if (n >= 1e6) return (n/1e6) + 'M';
+  if (n >= 1e3) return (n/1e3) + 'K';
+  return n;
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
+function renderStats() {
+  document.getElementById('statTotal').textContent = fmtNum(total);
+
+  const expected = 1 / sides;
+  document.getElementById('statExpected').textContent = (expected * 100).toFixed(1) + '%';
+  document.getElementById('statExpectedSub').textContent =
+    `= 1/${sides} theoretical probability`;
+
+  if (total === 0) {
+    document.getElementById('statMode').textContent = '—';
+    document.getElementById('statModeSub').textContent = 'leading by —';
+    document.getElementById('statDev').textContent = '—';
+    return;
+  }
+
+  const maxIdx = counts.indexOf(Math.max(...counts));
+  const sortedC = [...counts].sort((a,b)=>b-a);
+  const lead = sortedC[0] - (sortedC[1] || 0);
+  document.getElementById('statMode').textContent = labels[maxIdx];
+  document.getElementById('statModeSub').textContent =
+    `leading by ${lead} trial${lead !== 1 ? 's' : ''}`;
+
+  const maxDev = Math.max(...counts.map(c => Math.abs(c/total - expected)));
+  document.getElementById('statDev').textContent = (maxDev * 100).toFixed(2) + '%';
+}
+
+function fmtNum(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+// ── Outcome table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('outcomeBody');
+  if (total === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">
+      Run some trials to see results</td></tr>`;
+    return;
+  }
+  const expected = 1 / sides;
+  const maxCount = Math.max(...counts);
+  tbody.innerHTML = counts.map((c, i) => {
+    const obs = c / total;
+    const dev = obs - expected;
+    const pct = (obs * 100).toFixed(2);
+    const devPct = (dev * 100).toFixed(2);
+    const absDev = Math.abs(dev);
+    const devClass = absDev < 0.01 ? 'close' : absDev < 0.05 ? 'far' : 'far2';
+    const sign = dev >= 0 ? '+' : '';
+    const barPct = maxCount > 0 ? (c / maxCount * 100).toFixed(1) : 0;
+    return `<tr>
+      <td><span class="swatch" style="background:${getColor(i)}"></span>${labels[i]}</td>
+      <td>${fmtNum(c)}</td>
+      <td>${pct}%</td>
+      <td>${(expected*100).toFixed(2)}%</td>
+      <td class="deviation ${devClass}">${sign}${devPct}%</td>
+      <td>
+        <div class="progress-bar-row">
+          <div class="progress-bar-fill" style="width:${barPct}%;background:${getColor(i)}"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Insight ────────────────────────────────────────────────────────────────────
+function renderInsight() {
+  const el = document.getElementById('insightText');
+  const expected = 1 / sides;
+
+  if (total === 0) {
+    el.innerHTML = `The <strong>Law of Large Numbers</strong> states that as the number of trials increases,
+      the observed probability of each outcome converges toward its true theoretical probability.
+      Run a small number of trials and you will see wild swings — run thousands and the results
+      will settle close to the expected values.
+      <br><br>Try it: run 10 trials, then 10,000. Watch the bar chart even out and the
+      convergence line home in on <strong>${(expected*100).toFixed(1)}%</strong>.`;
+    return;
+  }
+
+  const maxDev = Math.max(...counts.map(c => Math.abs(c/total - expected)));
+
+  if (total < 10) {
+    el.innerHTML = `With only <strong>${total} trial${total>1?'s':''}</strong>, results are highly
+      random. The deviation from the expected <strong>${(expected*100).toFixed(1)}%</strong> is
+      completely normal at this sample size — you need far more trials to see the Law of Large
+      Numbers take effect. Keep going!`;
+  } else if (total < 100) {
+    el.innerHTML = `At <strong>${fmtNum(total)} trials</strong>, you are starting to see
+      patterns, but the deviation of <strong>${(maxDev*100).toFixed(1)}%</strong> from the
+      expected value is still significant. This is called <em>sampling variability</em>.
+      With this few trials, a streak of one outcome can still dominate — run hundreds more!`;
+  } else if (total < 1000) {
+    el.innerHTML = `With <strong>${fmtNum(total)} trials</strong>, the Law of Large Numbers
+      is beginning to assert itself. Max deviation: <strong>${(maxDev*100).toFixed(1)}%</strong>.
+      Notice how the convergence chart's jagged line is starting to flatten toward
+      <strong>${(expected*100).toFixed(1)}%</strong>. Continue to 10,000 for a striking result.`;
+  } else if (total < 100000) {
+    el.innerHTML = `<strong>${fmtNum(total)} trials</strong> — the Law of Large Numbers is
+      clearly visible now. Max deviation is down to <strong>${(maxDev*100).toFixed(1)}%</strong>.
+      The convergence chart shows the characteristic funnel shape: wild swings early on,
+      then rapid tightening around the true probability of
+      <strong>${(expected*100).toFixed(1)}%</strong>. This is why casinos always win in the long run.`;
+  } else {
+    el.innerHTML = `At <strong>${fmtNum(total)} trials</strong>, the Law of Large Numbers
+      is in full force. Maximum deviation from expected: <strong>${(maxDev*100).toFixed(2)}%</strong> —
+      essentially negligible. Each outcome is converging tightly around
+      <strong>${(expected*100).toFixed(1)}%</strong>. This mathematical certainty underpins
+      insurance pricing, quality control, opinion polling, and clinical drug trials.`;
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildLabels();
+render();
+
+// Redraw on resize
+window.addEventListener('resize', () => { if (total > 0) render(); });
+</script>
+</body>
+</html>
