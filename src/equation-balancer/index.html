@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equation Balancer | Infinite Knowledge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --surface:   #0c1528;
+      --surface2:  #111e38;
+      --ui-bg:     rgba(8,16,34,.94);
+      --ui-border: rgba(255,255,255,.08);
+      --text:      #dde4f0;
+      --muted:     #6b7a94;
+      --accent:    #4a9eff;
+      --green:     #3ecf8e;
+      --yellow:    #ffd700;
+      --red:       #ff6b6b;
+      --purple:    #b47aff;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      padding: 10px 20px;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; backdrop-filter: blur(12px);
+    }
+    .brand { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .hed   { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .tag   {
+      font-size: 11px; color: var(--purple);
+      background: rgba(180,122,255,.1);
+      border: 1px solid rgba(180,122,255,.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ── Main layout ─────────────────────────────────────── */
+    .main {
+      flex: 1; padding: 20px;
+      display: flex; flex-direction: column; gap: 18px;
+      max-width: 900px; margin: 0 auto; width: 100%;
+    }
+
+    /* ── Puzzle picker ───────────────────────────────────── */
+    .puzzle-strip {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .puzzle-label { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                    letter-spacing: .07em; white-space: nowrap; }
+    .puzzle-btn {
+      padding: 5px 14px; border-radius: 6px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--muted);
+      font-size: 12px; cursor: pointer; transition: all .15s;
+    }
+    .puzzle-btn:hover  { color: var(--text); background: rgba(255,255,255,.05); }
+    .puzzle-btn.active { background: rgba(180,122,255,.15); border-color: var(--purple); color: var(--purple); }
+
+    .diff-badge {
+      font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: 4px;
+    }
+    .diff-easy   { background: rgba(62,207,142,.15); color: var(--green); }
+    .diff-medium { background: rgba(255,215,0,.12);  color: var(--yellow); }
+    .diff-hard   { background: rgba(255,107,107,.12);color: var(--red); }
+
+    /* ── Scale visual ────────────────────────────────────── */
+    .scale-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+      position: relative;
+    }
+
+    .scale-svg-wrap { width: 100%; max-width: 700px; }
+
+    /* ── Equation display ────────────────────────────────── */
+    .equation-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; font-size: 26px; font-weight: 700;
+      font-family: 'Georgia', serif;
+      padding: 6px 0;
+    }
+    .eq-side {
+      min-width: 140px; text-align: center;
+      transition: color .3s;
+    }
+    .eq-side.highlight { color: var(--yellow); }
+    .eq-equals { color: var(--muted); font-size: 28px; }
+    .eq-lhs { color: var(--accent); }
+    .eq-rhs { color: var(--green); }
+
+    .solved-banner {
+      text-align: center; font-size: 15px; font-weight: 600;
+      color: var(--green); letter-spacing: .04em;
+      opacity: 0; transition: opacity .4s;
+      height: 24px;
+    }
+    .solved-banner.show { opacity: 1; }
+
+    /* ── Steps log ───────────────────────────────────────── */
+    .steps-log {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      min-height: 60px;
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .steps-log::-webkit-scrollbar { width: 4px; }
+    .steps-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+    .step-row {
+      display: flex; align-items: baseline; gap: 10px;
+      font-size: 13px; animation: fadeIn .25s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform:none; } }
+    .step-n     { font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; }
+    .step-op    { color: var(--yellow); font-weight: 600; min-width: 120px; }
+    .step-arrow { color: var(--muted); }
+    .step-eq    { font-family: 'Georgia', serif; color: var(--text); }
+    .step-solved { color: var(--green); font-weight: 600; }
+
+    .steps-empty { color: var(--muted); font-size: 13px; font-style: italic; }
+
+    /* ── Operation panel ─────────────────────────────────── */
+    .op-panel {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .op-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .op-label { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                letter-spacing: .07em; width: 90px; flex-shrink: 0; }
+
+    .op-btn {
+      width: 46px; height: 46px; border-radius: 8px;
+      border: 1px solid var(--ui-border);
+      background: var(--surface2); color: var(--text);
+      font-size: 22px; cursor: pointer; transition: all .12s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .op-btn:hover  { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); }
+    .op-btn.sel    { background: rgba(180,122,255,.2); border-color: var(--purple); color: var(--purple); }
+    .op-btn:active { transform: scale(.93); }
+
+    .value-input {
+      width: 90px; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--ui-border);
+      background: var(--surface2); color: var(--text);
+      font-size: 16px; font-family: 'Georgia', serif; text-align: center;
+      outline: none; transition: border-color .15s;
+    }
+    .value-input:focus { border-color: var(--accent); }
+
+    .apply-btn {
+      padding: 10px 28px; border-radius: 8px;
+      border: 1px solid rgba(180,122,255,.4);
+      background: rgba(180,122,255,.12); color: var(--purple);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .apply-btn:hover   { background: rgba(180,122,255,.22); border-color: var(--purple); }
+    .apply-btn:active  { transform: scale(.97); }
+    .apply-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    .error-msg {
+      font-size: 12px; color: var(--red); height: 18px;
+      transition: opacity .2s;
+    }
+
+    /* Hint / undo row */
+    .util-row {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    }
+    .util-btn {
+      padding: 7px 16px; border-radius: 6px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--muted);
+      font-size: 12px; cursor: pointer; transition: all .15s;
+    }
+    .util-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    .hint-text {
+      font-size: 12px; color: var(--yellow);
+      background: rgba(255,215,0,.07);
+      border: 1px solid rgba(255,215,0,.2);
+      border-radius: 6px; padding: 7px 14px;
+      flex: 1; min-width: 200px;
+      display: none;
+    }
+    .hint-text.show { display: block; }
+
+    /* ── Insight ─────────────────────────────────────────── */
+    .insight {
+      background: rgba(74,158,255,.06);
+      border: 1px solid rgba(74,158,255,.2);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: 13px; line-height: 1.6; color: var(--text);
+    }
+    .insight-head { font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+                    color: var(--accent); margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Infinite Knowledge · Mathematics · Algebra · Feature 1</div>
+    <div class="hed">Equation Balancer</div>
+  </div>
+  <div class="tag">Visual Algebra</div>
+</header>
+
+<div class="main">
+
+  <!-- Puzzle picker -->
+  <div class="puzzle-strip">
+    <span class="puzzle-label">Choose puzzle</span>
+    <div id="puzzleButtons"></div>
+  </div>
+
+  <!-- Scale SVG -->
+  <div class="scale-wrap">
+    <div class="scale-svg-wrap">
+      <svg id="scaleSvg" viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Base pillar -->
+        <rect x="345" y="160" width="10" height="50" rx="3" fill="#334466"/>
+        <!-- Base foot -->
+        <rect x="300" y="205" width="100" height="10" rx="4" fill="#334466"/>
+        <!-- Pivot circle -->
+        <circle id="pivot" cx="350" cy="160" r="7" fill="#6b7a94"/>
+        <!-- Beam — rotated around pivot -->
+        <g id="beam" transform-origin="350 160">
+          <rect x="50" y="156" width="600" height="8" rx="4" fill="#334466"/>
+          <!-- Left pan rope -->
+          <line x1="120" y1="164" x2="120" y2="185" stroke="#334466" stroke-width="2"/>
+          <line x1="80"  y1="185" x2="160" y2="185" stroke="#334466" stroke-width="2"/>
+          <rect id="lhsPan" x="80" y="185" width="80" height="8" rx="3" fill="#1a2a4a"/>
+          <!-- Right pan rope -->
+          <line x1="580" y1="164" x2="580" y2="185" stroke="#334466" stroke-width="2"/>
+          <line x1="540" y1="185" x2="620" y2="185" stroke="#334466" stroke-width="2"/>
+          <rect id="rhsPan" x="540" y="185" width="80" height="8" rx="3" fill="#1a2a4a"/>
+        </g>
+        <!-- LHS label above pan -->
+        <text id="lhsLabel" x="120" y="148" text-anchor="middle"
+              font-family="Georgia,serif" font-size="18" font-weight="bold" fill="#4a9eff">?</text>
+        <!-- RHS label above pan -->
+        <text id="rhsLabel" x="580" y="148" text-anchor="middle"
+              font-family="Georgia,serif" font-size="18" font-weight="bold" fill="#3ecf8e">?</text>
+        <!-- Balance / imbalance indicator -->
+        <text id="balanceMsg" x="350" y="145" text-anchor="middle"
+              font-family="system-ui" font-size="13" fill="#6b7a94">⚖</text>
+      </svg>
+    </div>
+
+    <!-- Equation text display -->
+    <div class="equation-row">
+      <div class="eq-side eq-lhs" id="displayLhs">—</div>
+      <div class="eq-equals">=</div>
+      <div class="eq-side eq-rhs" id="displayRhs">—</div>
+    </div>
+    <div class="solved-banner" id="solvedBanner">✓ Solved! x = <span id="solvedVal"></span></div>
+  </div>
+
+  <!-- Steps log -->
+  <div class="steps-log" id="stepsLog">
+    <span class="steps-empty">Your steps will appear here as you work…</span>
+  </div>
+
+  <!-- Operation panel -->
+  <div class="op-panel">
+    <div class="op-row">
+      <span class="op-label">Operation</span>
+      <button class="op-btn" id="opAdd" onclick="selOp('+')">+</button>
+      <button class="op-btn" id="opSub" onclick="selOp('−')">−</button>
+      <button class="op-btn" id="opMul" onclick="selOp('×')">×</button>
+      <button class="op-btn" id="opDiv" onclick="selOp('÷')">÷</button>
+      <span style="color:var(--muted);font-size:12px;margin-left:6px">to both sides</span>
+    </div>
+    <div class="op-row">
+      <span class="op-label">Value</span>
+      <input class="value-input" id="valInput" type="number" value="1" min="-99" max="99"
+             onkeydown="if(event.key==='Enter') applyOp()" />
+      <button class="apply-btn" id="applyBtn" onclick="applyOp()">Apply to both sides →</button>
+      <div class="error-msg" id="errMsg"></div>
+    </div>
+    <div class="util-row">
+      <button class="util-btn" onclick="undo()">↩ Undo</button>
+      <button class="util-btn" onclick="reset()">↺ Reset</button>
+      <button class="util-btn" onclick="showHint()">💡 Hint</button>
+      <div class="hint-text" id="hintBox"></div>
+    </div>
+  </div>
+
+  <!-- Insight -->
+  <div class="insight">
+    <div class="insight-head">💡 The Golden Rule of Algebra</div>
+    Whatever you do to one side of an equation, you <strong>must</strong> do to the other.
+    The scale is a physical model of this rule — any operation that keeps both pans at the
+    same height is a legal move. Your goal is to isolate <strong>x</strong> on one side
+    by making a series of balanced moves. There is always more than one valid path to the solution.
+  </div>
+
+</div>
+
+<script>
+// ── Puzzle definitions ─────────────────────────────────────────────────────────
+// Each puzzle stores the equation as {lhs, rhs} where each side is an expression
+// represented as {coeff, const} meaning  coeff*x + const
+// e.g.  3x + 2 = 11  →  lhs={coeff:3,const:2}  rhs={coeff:0,const:11}
+const PUZZLES = [
+  { id:'p1', label:'x + 3 = 7',       diff:'easy',   lhs:{c:1,k:3},  rhs:{c:0,k:7},  hint:'Subtract 3 from both sides.' },
+  { id:'p2', label:'2x = 10',          diff:'easy',   lhs:{c:2,k:0},  rhs:{c:0,k:10}, hint:'Divide both sides by 2.' },
+  { id:'p3', label:'x − 4 = 9',        diff:'easy',   lhs:{c:1,k:-4}, rhs:{c:0,k:9},  hint:'Add 4 to both sides.' },
+  { id:'p4', label:'3x + 1 = 10',      diff:'medium', lhs:{c:3,k:1},  rhs:{c:0,k:10}, hint:'First subtract 1 from both sides, then divide by 3.' },
+  { id:'p5', label:'2x − 5 = 11',      diff:'medium', lhs:{c:2,k:-5}, rhs:{c:0,k:11}, hint:'First add 5 to both sides, then divide by 2.' },
+  { id:'p6', label:'4x + 3 = 2x + 11', diff:'medium', lhs:{c:4,k:3},  rhs:{c:2,k:11}, hint:'Subtract 2x from both sides, then subtract 3, then divide by 2.' },
+  { id:'p7', label:'5x − 7 = 3x + 9',  diff:'hard',   lhs:{c:5,k:-7}, rhs:{c:3,k:9},  hint:'Subtract 3x from both sides first to collect x terms.' },
+  { id:'p8', label:'6x + 4 = 4x + 16', diff:'hard',   lhs:{c:6,k:4},  rhs:{c:4,k:16}, hint:'Subtract 4x from both sides, then subtract 4, then divide by 2.' },
+  { id:'p9', label:'−2x + 10 = 4',     diff:'hard',   lhs:{c:-2,k:10},rhs:{c:0,k:4},  hint:'Subtract 10 from both sides, then divide by −2.' },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let puzzle   = PUZZLES[0];
+let lhs      = {...puzzle.lhs};  // {c: coeff of x, k: constant}
+let rhs      = {...puzzle.rhs};
+let history  = [];               // stack of {lhs, rhs} snapshots
+let steps    = [];               // [{opLabel, lhsStr, rhsStr, solved}]
+let selOpSym = '+';
+let solved   = false;
+
+// ── Build puzzle buttons ───────────────────────────────────────────────────────
+function buildButtons() {
+  const wrap = document.getElementById('puzzleButtons');
+  wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+  PUZZLES.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'puzzle-btn' + (i === 0 ? ' active' : '');
+    btn.id = 'pb_' + p.id;
+    btn.innerHTML = p.label +
+      `<span class="diff-badge diff-${p.diff}">${p.diff}</span>`;
+    btn.onclick = () => loadPuzzle(p);
+    wrap.appendChild(btn);
+  });
+}
+
+function loadPuzzle(p) {
+  puzzle = p;
+  lhs = {...p.lhs}; rhs = {...p.rhs};
+  history = []; steps = []; solved = false;
+  document.querySelectorAll('.puzzle-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pb_' + p.id).classList.add('active');
+  document.getElementById('hintBox').classList.remove('show');
+  document.getElementById('solvedBanner').classList.remove('show');
+  clearError();
+  render();
+}
+
+// ── Expression helpers ─────────────────────────────────────────────────────────
+// expr = {c: coefficient of x, k: constant}
+function exprStr(e) {
+  const {c, k} = e;
+  if (c === 0 && k === 0)  return '0';
+  if (c === 0)             return String(k);
+  const xTerm = c === 1 ? 'x' : c === -1 ? '−x' : (c < 0 ? `−${Math.abs(c)}x` : `${c}x`);
+  if (k === 0) return xTerm;
+  const kStr  = k < 0 ? ` − ${Math.abs(k)}` : ` + ${k}`;
+  return xTerm + kStr;
+}
+
+function isSolved() {
+  // Solved when one side is purely x (coeff=1, const=0) and other is purely a constant
+  return (lhs.c === 1 && lhs.k === 0 && rhs.c === 0) ||
+         (rhs.c === 1 && rhs.k === 0 && lhs.c === 0);
+}
+
+function solutionValue() {
+  if (lhs.c === 1 && lhs.k === 0) return rhs.k;
+  if (rhs.c === 1 && rhs.k === 0) return lhs.k;
+  return null;
+}
+
+// ── Apply operation ────────────────────────────────────────────────────────────
+function applyOp() {
+  if (solved) return;
+  const raw = document.getElementById('valInput').value.trim();
+  const v   = parseFloat(raw);
+
+  clearError();
+  if (raw === '' || isNaN(v)) { showError('Enter a number first.'); return; }
+  if (v === 0 && (selOpSym === '×' || selOpSym === '÷')) {
+    showError(selOpSym === '÷' ? 'Cannot divide by zero.' : 'Multiplying by 0 removes x — try another value.'); return;
+  }
+  if (!Number.isInteger(v) && (selOpSym === '+' || selOpSym === '−')) {
+    showError('Use whole numbers for adding/subtracting.'); return;
+  }
+
+  // Snapshot for undo
+  history.push({ lhs: {...lhs}, rhs: {...rhs} });
+
+  const opLabel = `${selOpSym} ${v} to both sides`;
+
+  switch (selOpSym) {
+    case '+': lhs.k += v; rhs.k += v; break;
+    case '−': lhs.k -= v; rhs.k -= v; break;
+    case '×':
+      lhs.c *= v; lhs.k *= v;
+      rhs.c *= v; rhs.k *= v;
+      break;
+    case '÷':
+      if (lhs.c % v !== 0 || lhs.k % v !== 0 || rhs.c % v !== 0 || rhs.k % v !== 0) {
+        showError('That division leaves a fraction — try a different value.');
+        history.pop(); return;
+      }
+      lhs.c /= v; lhs.k /= v;
+      rhs.c /= v; rhs.k /= v;
+      break;
+  }
+
+  const nowSolved = isSolved();
+  steps.push({ opLabel, lhsStr: exprStr(lhs), rhsStr: exprStr(rhs), solved: nowSolved });
+  if (nowSolved) solved = true;
+
+  render();
+  // Animate highlight
+  ['displayLhs','displayRhs'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.add('highlight');
+    setTimeout(() => el.classList.remove('highlight'), 500);
+  });
+}
+
+// ── Undo ───────────────────────────────────────────────────────────────────────
+function undo() {
+  if (!history.length) return;
+  const snap = history.pop();
+  lhs = snap.lhs; rhs = snap.rhs;
+  steps.pop();
+  solved = false;
+  document.getElementById('solvedBanner').classList.remove('show');
+  clearError();
+  render();
+}
+
+function reset() {
+  loadPuzzle(puzzle);
+}
+
+// ── Op selection ───────────────────────────────────────────────────────────────
+function selOp(sym) {
+  selOpSym = sym;
+  ['opAdd','opSub','opMul','opDiv'].forEach(id => document.getElementById(id).classList.remove('sel'));
+  const map = {'+':'opAdd','−':'opSub','×':'opMul','÷':'opDiv'};
+  document.getElementById(map[sym]).classList.add('sel');
+  clearError();
+}
+
+// ── Hint ───────────────────────────────────────────────────────────────────────
+function showHint() {
+  const box = document.getElementById('hintBox');
+  box.textContent = '💡 ' + puzzle.hint;
+  box.classList.add('show');
+}
+
+// ── Error ──────────────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = '⚠ ' + msg;
+  setTimeout(() => { if (el.textContent.includes(msg)) el.textContent = ''; }, 3000);
+}
+function clearError() { document.getElementById('errMsg').textContent = ''; }
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render() {
+  renderEquation();
+  renderScale();
+  renderSteps();
+  if (solved) renderSolved();
+}
+
+function renderEquation() {
+  document.getElementById('displayLhs').textContent = exprStr(lhs);
+  document.getElementById('displayRhs').textContent = exprStr(rhs);
+  document.getElementById('lhsLabel').textContent   = exprStr(lhs);
+  document.getElementById('rhsLabel').textContent   = exprStr(rhs);
+}
+
+function renderScale() {
+  // Compute "weight" of each side as the absolute value of the constant
+  // (only relevant for visual lean; once solved both sides equal)
+  const beam  = document.getElementById('beam');
+  const bMsg  = document.getElementById('balanceMsg');
+  const lPan  = document.getElementById('lhsPan');
+  const rPan  = document.getElementById('rhsPan');
+
+  const lhsVal = lhs.c + lhs.k;  // rough numeric "weight" for tilt
+  const rhsVal = rhs.c + rhs.k;
+  const diff   = lhsVal - rhsVal;
+  const tilt   = Math.max(-18, Math.min(18, diff * 1.5)); // degrees, capped
+
+  beam.setAttribute('transform', `rotate(${tilt}, 350, 160)`);
+
+  if (solved) {
+    lPan.setAttribute('fill', 'rgba(62,207,142,.35)');
+    rPan.setAttribute('fill', 'rgba(62,207,142,.35)');
+    bMsg.textContent = '⚖ Balanced!';
+    bMsg.setAttribute('fill', '#3ecf8e');
+  } else if (Math.abs(tilt) < 1) {
+    lPan.setAttribute('fill', 'rgba(74,158,255,.25)');
+    rPan.setAttribute('fill', 'rgba(74,158,255,.25)');
+    bMsg.textContent = '⚖ Balanced — keep going';
+    bMsg.setAttribute('fill', '#4a9eff');
+  } else {
+    const heavy = diff > 0 ? 'left' : 'right';
+    lPan.setAttribute('fill', heavy === 'left'  ? 'rgba(255,107,107,.25)' : 'rgba(74,158,255,.15)');
+    rPan.setAttribute('fill', heavy === 'right' ? 'rgba(255,107,107,.25)' : 'rgba(74,158,255,.15)');
+    bMsg.textContent = `${heavy === 'left' ? '←' : '→'} Unbalanced`;
+    bMsg.setAttribute('fill', '#ff6b6b');
+  }
+}
+
+function renderSteps() {
+  const log = document.getElementById('stepsLog');
+  if (!steps.length) {
+    log.innerHTML = '<span class="steps-empty">Your steps will appear here as you work…</span>';
+    return;
+  }
+  log.innerHTML = steps.map((s, i) => `
+    <div class="step-row">
+      <span class="step-n">${i+1}.</span>
+      <span class="step-op">${s.opLabel}</span>
+      <span class="step-arrow">→</span>
+      <span class="step-eq">${s.lhsStr} = ${s.rhsStr}</span>
+      ${s.solved ? '<span class="step-solved">✓ Solved!</span>' : ''}
+    </div>`).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderSolved() {
+  const val = solutionValue();
+  document.getElementById('solvedVal').textContent = val;
+  document.getElementById('solvedBanner').classList.add('show');
+  document.getElementById('applyBtn').disabled = true;
+  setTimeout(() => document.getElementById('applyBtn').disabled = false, 100);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildButtons();
+selOp('+');
+render();
+</script>
+</body>
+</html>
