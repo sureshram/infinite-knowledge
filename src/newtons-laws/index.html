@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Newton's Laws | Infinite Knowledge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --surface:   #0c1528;
+      --surface2:  #111e38;
+      --ui-bg:     rgba(8,16,34,.94);
+      --ui-border: rgba(255,255,255,.08);
+      --text:      #dde4f0;
+      --muted:     #6b7a94;
+      --accent:    #4a9eff;
+      --green:     #3ecf8e;
+      --yellow:    #ffd700;
+      --red:       #ff6b6b;
+      --orange:    #ff9f4a;
+      --purple:    #b47aff;
+      --radius:    10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      padding: 10px 20px;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; backdrop-filter: blur(12px);
+    }
+    .brand { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .hed   { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .tag   {
+      font-size: 11px; color: var(--green);
+      background: rgba(62,207,142,.1);
+      border: 1px solid rgba(62,207,142,.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ── Tooltip system ──────────────────────────────────── */
+    .tip-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tip-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: rgba(74,158,255,.18);
+      border: 1px solid rgba(74,158,255,.35);
+      color: var(--accent);
+      font-size: 10px; font-weight: 700;
+      cursor: help; flex-shrink: 0;
+      user-select: none;
+      transition: background .15s;
+    }
+    .tip-icon:hover { background: rgba(74,158,255,.32); }
+
+    .tip-bubble {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%; transform: translateX(-50%);
+      background: #0a1830;
+      border: 1px solid rgba(74,158,255,.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      width: 240px;
+      font-size: 12px; line-height: 1.55;
+      color: var(--text);
+      pointer-events: none;
+      opacity: 0; transition: opacity .15s;
+      z-index: 999;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .tip-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: rgba(74,158,255,.4);
+    }
+    .tip-bubble .tip-head {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .tip-bubble .tip-example {
+      margin-top: 6px; font-style: italic; color: var(--yellow); font-size: 11px;
+    }
+    .tip-wrap:hover .tip-bubble,
+    .tip-wrap.open  .tip-bubble { opacity: 1; }
+
+    /* ── Law tabs ────────────────────────────────────────── */
+    .law-tabs {
+      display: flex; gap: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--ui-border);
+      flex-shrink: 0;
+    }
+    .law-tab {
+      flex: 1; padding: 14px 12px;
+      text-align: center; cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all .2s;
+      font-size: 13px; color: var(--muted);
+      user-select: none;
+    }
+    .law-tab:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .law-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .law-tab .law-num  { font-size: 18px; font-weight: 700; display: block; margin-bottom: 2px; }
+    .law-tab .law-name { font-size: 11px; }
+
+    /* ── Main content ────────────────────────────────────── */
+    .main {
+      flex: 1; display: flex; flex-direction: column;
+      max-width: 960px; margin: 0 auto; width: 100%; padding: 20px; gap: 18px;
+    }
+
+    /* Law panel */
+    .law-panel { display: none; flex-direction: column; gap: 18px; }
+    .law-panel.active { display: flex; }
+
+    /* Hero description */
+    .law-hero {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+    .law-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .law-quote {
+      font-size: 15px; color: var(--yellow); font-style: italic;
+      border-left: 3px solid rgba(255,215,0,.4);
+      padding-left: 14px; margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    .law-desc { font-size: 13px; line-height: 1.7; color: var(--muted); }
+    .law-desc strong { color: var(--text); }
+
+    /* Sim + controls row */
+    .sim-row {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 16px;
+    }
+    @media (max-width: 680px) {
+      .sim-row { grid-template-columns: 1fr; }
+    }
+
+    /* Canvas card */
+    .canvas-card {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+    .canvas-card canvas { display: block; width: 100%; }
+
+    .sim-label {
+      position: absolute; top: 10px; left: 12px;
+      font-size: 11px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .07em;
+      pointer-events: none;
+    }
+
+    /* Controls card */
+    .ctrl-card {
+      background: var(--surface);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .ctrl-section { display: flex; flex-direction: column; gap: 10px; }
+    .ctrl-head {
+      font-size: 11px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .07em;
+    }
+
+    /* Slider control */
+    .slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .slider-row  { display: flex; align-items: center; gap: 8px; }
+    .slider-row input[type=range] {
+      flex: 1; accent-color: var(--accent); cursor: pointer;
+    }
+    .slider-val {
+      min-width: 48px; text-align: right;
+      font-size: 14px; font-weight: 700; color: var(--accent);
+      font-family: 'Georgia', serif;
+    }
+
+    /* Big action button */
+    .action-btn {
+      width: 100%; padding: 13px;
+      border-radius: 8px;
+      border: 1px solid rgba(62,207,142,.4);
+      background: rgba(62,207,142,.1);
+      color: var(--green);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+    }
+    .action-btn:hover  { background: rgba(62,207,142,.2); border-color: var(--green); }
+    .action-btn:active { transform: scale(.98); }
+    .action-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    .reset-btn {
+      width: 100%; padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--muted);
+      font-size: 13px; cursor: pointer; transition: all .15s;
+    }
+    .reset-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    /* Formula display */
+    .formula-box {
+      background: var(--surface2);
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+    .formula-main {
+      font-family: 'Georgia', serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .formula-parts {
+      display: flex; justify-content: center; gap: 16px;
+      font-size: 12px; color: var(--muted);
+    }
+    .fpart { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .fpart-val { font-size: 15px; font-weight: 700; }
+
+    /* Real-world examples strip */
+    .examples {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .example-chip {
+      background: var(--surface2);
+      border: 1px solid var(--ui-border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .example-chip:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+    .example-chip.active {
+      background: rgba(74,158,255,.12);
+      border-color: var(--accent); color: var(--accent);
+    }
+
+    /* Status message */
+    .status-msg {
+      text-align: center; font-size: 13px; color: var(--muted);
+      min-height: 20px; transition: color .3s;
+    }
+    .status-msg.highlight { color: var(--yellow); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Infinite Knowledge · Science · Physics · Feature 1</div>
+    <div class="hed">Newton's Laws of Motion</div>
+  </div>
+  <div class="tag">Interactive Simulation</div>
+</header>
+
+<!-- Global tooltip (shared, positioned by JS) -->
+<div id="globalTip" style="
+  position:fixed; z-index:9999;
+  background:#0a1830; border:1px solid rgba(74,158,255,.45);
+  border-radius:9px; padding:12px 15px; width:250px;
+  font-size:12px; line-height:1.6; color:#dde4f0;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+  opacity:0; pointer-events:none; transition:opacity .15s;
+">
+  <div id="globalTipHead" style="font-size:11px;font-weight:700;color:#4a9eff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;"></div>
+  <div id="globalTipBody"></div>
+  <div id="globalTipEx" style="margin-top:6px;font-style:italic;color:#ffd700;font-size:11px;"></div>
+</div>
+
+<!-- Law Tabs -->
+<div class="law-tabs">
+  <div class="law-tab active" onclick="showLaw(1)">
+    <span class="law-num">1st</span>
+    <span class="law-name">Inertia</span>
+  </div>
+  <div class="law-tab" onclick="showLaw(2)">
+    <span class="law-num">2nd</span>
+    <span class="law-name">F = ma</span>
+  </div>
+  <div class="law-tab" onclick="showLaw(3)">
+    <span class="law-num">3rd</span>
+    <span class="law-name">Action &amp; Reaction</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- LAW 1 — INERTIA                                    -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="law-panel active" id="law1">
+
+    <div class="law-hero">
+      <div class="law-title">Newton's First Law — Inertia</div>
+      <div class="law-quote">"An object at rest stays at rest, and an object in motion stays in motion — unless acted upon by an external force."</div>
+      <div class="law-desc">
+        Objects don't <em>want</em> to change what they're doing. A ball sitting on a table won't move unless you push it.
+        A ball rolling on ice keeps rolling until friction or a wall stops it. This natural resistance to change is called
+        <strong>inertia</strong>. The more mass an object has, the more inertia it has.
+      </div>
+    </div>
+
+    <div class="sim-row">
+      <div class="canvas-card">
+        <span class="sim-label">Simulation</span>
+        <canvas id="c1" height="260"></canvas>
+      </div>
+      <div class="ctrl-card">
+        <div class="ctrl-section">
+          <div class="ctrl-head">Surface type
+            <span class="tip-icon" data-head="Surface & Friction" data-body="Friction is a force that slows moving objects down. A slippery surface (like ice) has very low friction — the object barely slows. A rough surface (like carpet) has high friction — the object stops quickly." data-ex="Real life: ice skates glide easily; sneakers on carpet stop fast.">?</span>
+          </div>
+          <div class="examples" id="surfaceChips">
+            <div class="example-chip active" data-friction="0.005" onclick="setSurface(this, 0.005)">🧊 Ice rink</div>
+            <div class="example-chip" data-friction="0.04"  onclick="setSurface(this, 0.04)">🏀 Hardwood floor</div>
+            <div class="example-chip" data-friction="0.12"  onclick="setSurface(this, 0.12)">🌿 Grass</div>
+            <div class="example-chip" data-friction="0.3"   onclick="setSurface(this, 0.3)">🟫 Carpet</div>
+          </div>
+        </div>
+
+        <div class="ctrl-section">
+          <div class="ctrl-head">Mass of object
+            <span class="tip-icon" data-head="Mass" data-body="Mass measures how much matter is in an object. A heavier object has more inertia — it's harder to start moving AND harder to stop once it's going." data-ex="Real life: a tennis ball vs a bowling ball — same push, very different results.">?</span>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-row">
+              <input type="range" id="s1mass" min="1" max="20" value="5" step="1" oninput="law1.setMass(+this.value)">
+              <span class="slider-val"><span id="v1mass">5</span> kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <div class="formula-main">p = mv</div>
+          <div class="formula-parts">
+            <div class="fpart"><span class="fpart-val" id="f1m" style="color:var(--orange)">5</span><span>mass (kg)</span></div>
+            <div class="fpart"><span class="fpart-val" id="f1v" style="color:var(--accent)">0.0</span><span>speed (m/s)</span></div>
+            <div class="fpart"><span class="fpart-val" id="f1p" style="color:var(--green)">0.0</span><span>momentum</span></div>
+          </div>
+        </div>
+
+        <div class="status-msg" id="s1msg">Choose a surface, then give the puck a push!</div>
+        <button class="action-btn" id="btn1push" onclick="law1.push()">🏒 Give it a push!</button>
+        <button class="reset-btn" onclick="law1.reset()">↺ Reset</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- LAW 2 — F = ma                                     -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="law-panel" id="law2">
+
+    <div class="law-hero">
+      <div class="law-title">Newton's Second Law — F = ma</div>
+      <div class="law-quote">"The acceleration of an object is directly proportional to the net force acting on it, and inversely proportional to its mass."</div>
+      <div class="law-desc">
+        Push harder → object speeds up faster. Use a heavier object → harder to speed up.
+        This relationship is captured in one of the most famous equations in science: <strong>Force = Mass × Acceleration</strong>.
+        Double the force, double the acceleration. Double the mass, <em>halve</em> the acceleration.
+      </div>
+    </div>
+
+    <div class="sim-row">
+      <div class="canvas-card">
+        <span class="sim-label">Simulation</span>
+        <canvas id="c2" height="260"></canvas>
+      </div>
+      <div class="ctrl-card">
+
+        <div class="ctrl-section">
+          <div class="ctrl-head">Applied Force
+            <span class="tip-icon" data-head="Force (Newtons)" data-body="Force is a push or pull on an object, measured in Newtons (N). 1 Newton is roughly the force needed to hold a small apple up against gravity." data-ex="Real life: a gentle push might be 5N; a car engine produces thousands of Newtons.">?</span>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-row">
+              <input type="range" id="s2force" min="5" max="200" value="50" step="5" oninput="law2.update()">
+              <span class="slider-val"><span id="v2force">50</span> N</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ctrl-section">
+          <div class="ctrl-head">Mass of object
+            <span class="tip-icon" data-head="Mass (Kilograms)" data-body="The more mass an object has, the more force you need to accelerate it at the same rate. This is why it's harder to push a car than a bicycle." data-ex="Real life: a bicycle is ~10 kg; a car is ~1,500 kg.">?</span>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-row">
+              <input type="range" id="s2mass" min="1" max="50" value="10" step="1" oninput="law2.update()">
+              <span class="slider-val"><span id="v2mass">10</span> kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <div class="formula-main" style="color:var(--accent)">F = m × a</div>
+          <div class="formula-parts">
+            <div class="fpart">
+              <span class="fpart-val" id="f2f" style="color:var(--green)">50</span>
+              <span>Force (N)</span>
+            </div>
+            <div class="fpart" style="font-size:18px;align-self:center;color:var(--muted)">=</div>
+            <div class="fpart">
+              <span class="fpart-val" id="f2m" style="color:var(--orange)">10</span>
+              <span>Mass (kg)</span>
+            </div>
+            <div class="fpart" style="font-size:18px;align-self:center;color:var(--muted)">×</div>
+            <div class="fpart">
+              <span class="fpart-val" id="f2a" style="color:var(--accent)">5.0</span>
+              <span>Accel (m/s²)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-msg" id="s2msg">Adjust force and mass, then launch the block!</div>
+        <button class="action-btn" id="btn2launch" onclick="law2.launch()">🚀 Launch block!</button>
+        <button class="reset-btn" onclick="law2.reset()">↺ Reset</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- LAW 3 — ACTION & REACTION                          -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div class="law-panel" id="law3">
+
+    <div class="law-hero">
+      <div class="law-title">Newton's Third Law — Action &amp; Reaction</div>
+      <div class="law-quote">"For every action, there is an equal and opposite reaction."</div>
+      <div class="law-desc">
+        Forces always come in pairs. When you push against a wall, the wall pushes back on you with the same force.
+        When a rocket expels gas downward, the gas pushes the rocket upward. When two skaters push off each other,
+        they both fly apart. <strong>No force ever acts alone</strong> — there is always a partner force.
+      </div>
+    </div>
+
+    <div class="sim-row">
+      <div class="canvas-card">
+        <span class="sim-label">Simulation</span>
+        <canvas id="c3" height="260"></canvas>
+      </div>
+      <div class="ctrl-card">
+
+        <div class="ctrl-section">
+          <div class="ctrl-head">Scenario
+            <span class="tip-icon" data-head="Scenarios" data-body="Each scenario shows Newton's 3rd Law in a different context. The skaters push each other — both move! The rocket expels gas downward — and shoots upward." data-ex="Same principle: guns recoil, boats are rowed, you walk by pushing the ground backward.">?</span>
+          </div>
+          <div class="examples" id="scenarioChips">
+            <div class="example-chip active" data-scene="skaters" onclick="setScene(this,'skaters')">⛸ Skaters</div>
+            <div class="example-chip" data-scene="rocket" onclick="setScene(this,'rocket')">🚀 Rocket</div>
+          </div>
+        </div>
+
+        <div class="ctrl-section" id="s3skaterCtrls">
+          <div class="ctrl-head">Skater A mass
+            <span class="tip-icon" data-head="Why does mass matter here?" data-body="Both skaters feel the SAME force. But the lighter skater has less mass, so F=ma means they accelerate MORE. The heavier skater moves slower." data-ex="Real life: a child and adult push off each other — the child flies back much faster!">?</span>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-row">
+              <input type="range" id="s3massA" min="40" max="120" value="60" step="5" oninput="law3.updateMasses()">
+              <span class="slider-val"><span id="v3massA">60</span> kg</span>
+            </div>
+          </div>
+          <div class="ctrl-head">Skater B mass</div>
+          <div class="slider-wrap">
+            <div class="slider-row">
+              <input type="range" id="s3massB" min="40" max="120" value="90" step="5" oninput="law3.updateMasses()">
+              <span class="slider-val"><span id="v3massB">90</span> kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="formula-box" id="f3box">
+          <div class="formula-main">F<sub>A→B</sub> = −F<sub>B→A</sub></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">
+            The force A exerts on B is <strong style="color:var(--accent)">equal in size</strong>
+            but <strong style="color:var(--red)">opposite in direction</strong> to the force B exerts on A.
+          </div>
+          <div class="formula-parts" style="margin-top:10px">
+            <div class="fpart">
+              <span class="fpart-val" id="f3va" style="color:var(--accent)">—</span>
+              <span>Skater A speed</span>
+            </div>
+            <div class="fpart">
+              <span class="fpart-val" id="f3vb" style="color:var(--orange)">—</span>
+              <span>Skater B speed</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-msg" id="s3msg">Press the button to see what happens when the skaters push off!</div>
+        <button class="action-btn" id="btn3push" onclick="law3.push()">🤜 Push off!</button>
+        <button class="reset-btn" onclick="law3.reset()">↺ Reset</button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- .main -->
+
+<script>
+// ── Global tooltip system ──────────────────────────────────────────────────────
+const gTip     = document.getElementById('globalTip');
+const gTipHead = document.getElementById('globalTipHead');
+const gTipBody = document.getElementById('globalTipBody');
+const gTipEx   = document.getElementById('globalTipEx');
+
+document.querySelectorAll('.tip-icon').forEach(icon => {
+  function show(e) {
+    gTipHead.textContent = icon.dataset.head || '';
+    gTipBody.textContent = icon.dataset.body || '';
+    gTipEx.textContent   = icon.dataset.ex   || '';
+    gTip.style.opacity   = '1';
+    position(e);
+  }
+  function position(e) {
+    const r = icon.getBoundingClientRect();
+    let left = r.left + r.width/2 - 125;
+    let top  = r.top - 10;
+    left = Math.max(10, Math.min(window.innerWidth - 260, left));
+    // If too close to top, flip below
+    if (top - gTip.offsetHeight < 10) {
+      top = r.bottom + 10;
+    } else {
+      top = top - gTip.offsetHeight - 4;
+    }
+    gTip.style.left = left + 'px';
+    gTip.style.top  = top  + 'px';
+  }
+  icon.addEventListener('mouseenter', show);
+  icon.addEventListener('mousemove',  position);
+  icon.addEventListener('mouseleave', () => { gTip.style.opacity = '0'; });
+  icon.addEventListener('touchstart', e => { e.preventDefault(); show(e.touches[0]); });
+});
+document.addEventListener('touchstart', e => {
+  if (!e.target.classList.contains('tip-icon')) gTip.style.opacity = '0';
+});
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function showLaw(n) {
+  document.querySelectorAll('.law-tab').forEach((t, i) => t.classList.toggle('active', i === n-1));
+  document.querySelectorAll('.law-panel').forEach((p, i) => p.classList.toggle('active', i === n-1));
+  if (n === 1) law1.draw();
+  if (n === 2) { law2.update(); law2.draw(); }
+  if (n === 3) law3.draw();
+}
+
+// ── Utility ────────────────────────────────────────────────────────────────────
+function getCanvas(id) {
+  const canvas = document.getElementById(id);
+  const pane   = canvas.parentElement;
+  const W = pane.clientWidth;
+  const H = parseInt(canvas.getAttribute('height'));
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  return { ctx, W, H };
+}
+
+function setStatus(id, msg, highlight) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className   = 'status-msg' + (highlight ? ' highlight' : '');
+}
+
+// ── Surface colour helpers ─────────────────────────────────────────────────────
+const SURFACE_COLORS = {
+  0.005: { track:'#b8d4f0', surface:'rgba(180,220,255,.15)', name:'Ice' },
+  0.04:  { track:'#c8a96e', surface:'rgba(200,170,100,.15)', name:'Hardwood' },
+  0.12:  { track:'#6aaa5a', surface:'rgba(100,170,80,.15)',  name:'Grass' },
+  0.3:   { track:'#8b4513', surface:'rgba(140,70,20,.15)',  name:'Carpet' },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 1 — INERTIA
+// ═══════════════════════════════════════════════════════════════════════════════
+const law1 = (() => {
+  let friction = 0.005;
+  let mass     = 5;
+  let vel      = 0;       // m/s
+  let posX     = 0.15;    // 0..1 fractional position on track
+  let rafId    = null;
+  let lastT    = null;
+  let moving   = false;
+
+  function setSurface(f) { friction = f; }
+  function setMass(m) {
+    mass = m;
+    document.getElementById('v1mass').textContent = m;
+    document.getElementById('f1m').textContent    = m;
+    draw();
+  }
+
+  function push() {
+    if (moving) return;
+    vel    = 8;   // m/s — constant push regardless of mass (to show inertia via stopping distance)
+    moving = true;
+    lastT  = null;
+    document.getElementById('btn1push').disabled = true;
+    setStatus('s1msg', 'Watch how far it travels on this surface…', true);
+    animate();
+  }
+
+  function animate() {
+    rafId = requestAnimationFrame(t => {
+      if (!lastT) { lastT = t; rafId = requestAnimationFrame(animate); return; }
+      const dt = Math.min((t - lastT) / 1000, 0.05);
+      lastT = t;
+
+      // Deceleration due to friction: a = -μg (g≈10 m/s²)
+      const decel = friction * 10;
+      vel = Math.max(0, vel - decel * dt);
+
+      // Track is 20 "metres" wide; 1 unit = 0.05 fraction
+      posX += (vel * dt) / 20;
+
+      draw();
+
+      // Update readouts
+      document.getElementById('f1v').textContent = vel.toFixed(1);
+      document.getElementById('f1p').textContent = (mass * vel).toFixed(1);
+
+      if (vel > 0 && posX < 0.92) {
+        animate();
+      } else {
+        moving = false;
+        document.getElementById('btn1push').disabled = false;
+        if (posX >= 0.92) {
+          setStatus('s1msg', '🏒 It reached the wall! Try a rougher surface.', true);
+          posX = 0.92;
+        } else {
+          setStatus('s1msg', `Stopped after ${(posX * 20).toFixed(1)} m. Try ice for a longer ride!`);
+        }
+        document.getElementById('f1v').textContent = '0.0';
+        document.getElementById('f1p').textContent = '0.0';
+        draw();
+      }
+    });
+  }
+
+  function reset() {
+    if (rafId) cancelAnimationFrame(rafId);
+    vel = 0; posX = 0.15; moving = false; lastT = null;
+    document.getElementById('btn1push').disabled = false;
+    document.getElementById('f1v').textContent = '0.0';
+    document.getElementById('f1p').textContent = '0.0';
+    setStatus('s1msg', 'Choose a surface, then give the puck a push!');
+    draw();
+  }
+
+  function draw() {
+    const { ctx, W, H } = getCanvas('c1');
+    ctx.clearRect(0, 0, W, H);
+
+    const sc = SURFACE_COLORS[friction] || SURFACE_COLORS[0.12];
+
+    // Surface background
+    ctx.fillStyle = sc.surface;
+    ctx.fillRect(0, 0, W, H);
+
+    // Track floor
+    const trackY = H * 0.62;
+    const trackH = 14;
+    ctx.fillStyle = sc.track;
+    ctx.beginPath(); ctx.roundRect(W*.08, trackY, W*.84, trackH, 4); ctx.fill();
+
+    // Surface name label
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.font = '12px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText('Surface: ' + sc.name, W*.1, trackY + trackH + 18);
+
+    // Friction label
+    ctx.fillStyle = 'rgba(255,255,255,.25)';
+    ctx.font = '11px system-ui'; ctx.textAlign = 'right';
+    ctx.fillText(`friction = ${friction}`, W*.9, trackY + trackH + 18);
+
+    // Distance markers every 5 metres
+    for (let m = 0; m <= 20; m += 5) {
+      const x = W*0.08 + (m/20) * W*0.84;
+      ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, trackY - 4); ctx.lineTo(x, trackY + trackH + 4); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(m + 'm', x, trackY - 8);
+    }
+
+    // Puck
+    const puckX = W*0.08 + posX * W*0.84;
+    const puckR = 18;
+    const puckY = trackY - puckR + 4;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,.25)';
+    ctx.beginPath(); ctx.ellipse(puckX, puckY + puckR + 4, puckR, 5, 0, 0, Math.PI*2); ctx.fill();
+
+    // Puck body
+    const grad = ctx.createRadialGradient(puckX - 4, puckY - 4, 2, puckX, puckY, puckR);
+    grad.addColorStop(0, '#88ccff'); grad.addColorStop(1, '#2255aa');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(puckX, puckY, puckR, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(puckX, puckY, puckR, 0, Math.PI*2); ctx.stroke();
+
+    // Velocity arrow
+    if (vel > 0.3) {
+      const arrowLen = Math.min(vel * 8, 70);
+      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(puckX + puckR, puckY);
+      ctx.lineTo(puckX + puckR + arrowLen, puckY);
+      ctx.stroke();
+      // Arrowhead
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(puckX + puckR + arrowLen + 8, puckY);
+      ctx.lineTo(puckX + puckR + arrowLen,     puckY - 5);
+      ctx.lineTo(puckX + puckR + arrowLen,     puckY + 5);
+      ctx.closePath(); ctx.fill();
+
+      // Speed label
+      ctx.fillStyle = '#ffd700'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left';
+      ctx.fillText(vel.toFixed(1) + ' m/s', puckX + puckR + arrowLen/2 - 10, puckY - 8);
+    }
+
+    // "No more force acting" label when moving
+    if (vel > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = 'italic 11px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('← No force applied — only friction slowing it down', W/2, H * 0.88);
+    }
+  }
+
+  return { push, reset, setMass, setSurface, draw };
+})();
+
+// Surface chip selector
+function setSurface(el, friction) {
+  document.querySelectorAll('#surfaceChips .example-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  law1.setSurface(friction);
+  law1.reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 2 — F = ma
+// ═══════════════════════════════════════════════════════════════════════════════
+const law2 = (() => {
+  let posX   = 0.05;
+  let vel    = 0;
+  let rafId  = null;
+  let lastT  = null;
+  let active = false;
+
+  function getVals() {
+    const F = +document.getElementById('s2force').value;
+    const m = +document.getElementById('s2mass').value;
+    const a = F / m;
+    return { F, m, a };
+  }
+
+  function update() {
+    const { F, m, a } = getVals();
+    document.getElementById('v2force').textContent = F;
+    document.getElementById('v2mass').textContent  = m;
+    document.getElementById('f2f').textContent     = F;
+    document.getElementById('f2m').textContent     = m;
+    document.getElementById('f2a').textContent     = a.toFixed(1);
+    if (!active) draw();
+  }
+
+  function launch() {
+    if (active) return;
+    posX = 0.05; vel = 0; active = true; lastT = null;
+    document.getElementById('btn2launch').disabled = true;
+    setStatus('s2msg', 'Block accelerating… watch the force arrow!', true);
+    animate();
+  }
+
+  function animate() {
+    rafId = requestAnimationFrame(t => {
+      if (!lastT) { lastT = t; rafId = requestAnimationFrame(animate); return; }
+      const dt = Math.min((t - lastT) / 1000, 0.05);
+      lastT = t;
+      const { a } = getVals();
+      // Scale: track = 40 real metres
+      vel  += a * dt;
+      posX += (vel * dt) / 40;
+      draw();
+      if (posX < 0.92) {
+        animate();
+      } else {
+        posX = 0.92; active = false;
+        document.getElementById('btn2launch').disabled = false;
+        setStatus('s2msg', `Reached the end at ${vel.toFixed(1)} m/s! Try changing mass or force.`);
+        draw();
+      }
+    });
+  }
+
+  function reset() {
+    if (rafId) cancelAnimationFrame(rafId);
+    posX = 0.05; vel = 0; active = false; lastT = null;
+    document.getElementById('btn2launch').disabled = false;
+    setStatus('s2msg', 'Adjust force and mass, then launch the block!');
+    update(); draw();
+  }
+
+  function draw() {
+    const { ctx, W, H } = getCanvas('c2');
+    const { F, m, a } = getVals();
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = 'rgba(74,158,255,.04)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Track
+    const trackY = H * 0.62;
+    ctx.fillStyle = '#1a2a4a';
+    ctx.beginPath(); ctx.roundRect(W*.06, trackY, W*.88, 10, 3); ctx.fill();
+
+    // Track markings
+    for (let i = 0; i <= 8; i++) {
+      const x = W*.06 + (i/8) * W*.88;
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, trackY - 2); ctx.lineTo(x, trackY + 12); ctx.stroke();
+    }
+
+    // Block
+    const bx = W*0.06 + posX * W*0.88;
+    const bw = 40 + m * 0.6; // wider = heavier
+    const bh = 30 + m * 0.4;
+    const by = trackY - bh;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,.2)';
+    ctx.fillRect(bx - bw/2 + 4, trackY + 2, bw, 8);
+
+    // Block body
+    const bGrad = ctx.createLinearGradient(bx - bw/2, by, bx + bw/2, by + bh);
+    bGrad.addColorStop(0, '#5588cc'); bGrad.addColorStop(1, '#223366');
+    ctx.fillStyle = bGrad;
+    ctx.beginPath(); ctx.roundRect(bx - bw/2, by, bw, bh, 4); ctx.fill();
+    ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(bx - bw/2, by, bw, bh, 4); ctx.stroke();
+
+    // Mass label on block
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.min(13, bw/3)}px system-ui`; ctx.textAlign = 'center';
+    ctx.fillText(m + ' kg', bx, by + bh/2 + 5);
+
+    // Force arrow (fixed length from left edge)
+    if (active || posX > 0.06) {
+      const arrowLen = Math.min(F * 0.5, 90);
+      const ax = bx - bw/2 - arrowLen - 6;
+      ctx.strokeStyle = '#3ecf8e'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(ax, by + bh/2); ctx.lineTo(bx - bw/2 - 4, by + bh/2); ctx.stroke();
+      ctx.fillStyle = '#3ecf8e';
+      ctx.beginPath();
+      ctx.moveTo(bx - bw/2, by + bh/2);
+      ctx.lineTo(bx - bw/2 - 10, by + bh/2 - 6);
+      ctx.lineTo(bx - bw/2 - 10, by + bh/2 + 6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3ecf8e'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(F + ' N', ax + arrowLen/2, by + bh/2 - 10);
+    }
+
+    // Acceleration annotation
+    ctx.fillStyle = 'rgba(74,158,255,.8)';
+    ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(`a = F ÷ m = ${F} ÷ ${m} = ${a.toFixed(1)} m/s²`, W/2, H * 0.88);
+
+    // Velocity label above block
+    if (vel > 0.2) {
+      ctx.fillStyle = '#ffd700'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(`v = ${vel.toFixed(1)} m/s`, bx, by - 10);
+    }
+  }
+
+  return { update, launch, reset, draw };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAW 3 — ACTION & REACTION
+// ═══════════════════════════════════════════════════════════════════════════════
+const law3 = (() => {
+  let scene  = 'skaters';
+  let massA  = 60, massB = 90;
+  let velA   = 0, velB = 0;
+  let posA   = 0.44, posB = 0.56;  // fractional positions 0..1
+  let phase  = 'ready'; // 'ready' | 'push' | 'flying'
+  let pushT  = 0;
+  let rafId  = null;
+  let lastT  = null;
+
+  // Rocket state
+  let rocketY  = 0.7;  // fraction (0=top, 1=bottom)
+  let rocketV  = 0;
+  let rflameT  = 0;
+
+  function updateMasses() {
+    massA = +document.getElementById('s3massA').value;
+    massB = +document.getElementById('s3massB').value;
+    document.getElementById('v3massA').textContent = massA;
+    document.getElementById('v3massB').textContent = massB;
+    if (phase !== 'flying') draw();
+  }
+
+  function push() {
+    if (phase === 'flying') { reset(); return; }
+    phase = 'push'; pushT = 0; lastT = null;
+
+    if (scene === 'skaters') {
+      // Impulse shared equally; velocity inversely proportional to mass
+      const impulse = 300; // N·ms
+      velA = -(impulse / massA);  // flies left
+      velB =  (impulse / massB);  // flies right
+    } else {
+      rocketV = -0.4; // upward per second (fractional)
+    }
+
+    document.getElementById('btn3push').disabled = true;
+    document.getElementById('btn3push').textContent = '↺ Reset';
+    document.getElementById('btn3push').onclick = () => { law3.reset(); };
+    document.getElementById('btn3push').disabled = false;
+    animate();
+  }
+
+  function animate() {
+    rafId = requestAnimationFrame(t => {
+      if (!lastT) { lastT = t; rafId = requestAnimationFrame(animate); return; }
+      const dt = Math.min((t - lastT) / 1000, 0.05);
+      lastT = t;
+      pushT += dt;
+      phase = pushT < 0.4 ? 'push' : 'flying';
+
+      if (scene === 'skaters') {
+        // Track width = 20 m; positions in 0..1
+        posA += (velA * dt) / 20;
+        posB += (velB * dt) / 20;
+        posA = Math.max(0.03, posA);
+        posB = Math.min(0.97, posB);
+
+        document.getElementById('f3va').textContent = Math.abs(velA).toFixed(1) + ' m/s';
+        document.getElementById('f3vb').textContent = Math.abs(velB).toFixed(1) + ' m/s';
+
+        if (pushT > 0.3) {
+          setStatus('s3msg', `Skater A (${massA} kg) ← ${Math.abs(velA).toFixed(1)} m/s · Skater B (${massB} kg) → ${Math.abs(velB).toFixed(1)} m/s`);
+        }
+      } else {
+        rocketY += rocketV * dt;
+        rflameT  += dt;
+        rocketY  = Math.max(0.05, rocketY);
+        if (pushT > 0.3) setStatus('s3msg', 'Gas shoots down → rocket flies up! Same force, opposite directions.', true);
+      }
+
+      draw();
+
+      const done = scene === 'skaters'
+        ? (posA <= 0.03 || posB >= 0.97)
+        : rocketY <= 0.05;
+
+      if (!done) { animate(); }
+      else {
+        setStatus('s3msg', scene === 'skaters'
+          ? `Done! Lighter skater (${massA < massB ? 'A' : 'B'} · ${Math.min(massA,massB)} kg) moved faster — same force, less mass → more acceleration!`
+          : 'Rocket reached the top! Exhaust pushed down, rocket pushed up — equal and opposite.');
+      }
+    });
+  }
+
+  function reset() {
+    if (rafId) cancelAnimationFrame(rafId);
+    posA = 0.44; posB = 0.56; velA = 0; velB = 0;
+    rocketY = 0.7; rocketV = 0; rflameT = 0;
+    phase = 'ready'; lastT = null; pushT = 0;
+    document.getElementById('btn3push').disabled = false;
+    document.getElementById('btn3push').textContent = '🤜 Push off!';
+    document.getElementById('btn3push').onclick = () => law3.push();
+    document.getElementById('f3va').textContent = '—';
+    document.getElementById('f3vb').textContent = '—';
+    setStatus('s3msg', 'Press the button to see what happens when the skaters push off!');
+    draw();
+  }
+
+  function draw() {
+    const { ctx, W, H } = getCanvas('c3');
+    ctx.clearRect(0, 0, W, H);
+
+    if (scene === 'skaters') drawSkaters(ctx, W, H);
+    else                      drawRocket(ctx, W, H);
+  }
+
+  function drawSkaters(ctx, W, H) {
+    // Ice surface
+    ctx.fillStyle = 'rgba(180,220,255,.08)';
+    ctx.fillRect(0, 0, W, H);
+
+    const floorY = H * 0.68;
+    ctx.fillStyle = 'rgba(180,220,255,.18)';
+    ctx.fillRect(0, floorY, W, H - floorY);
+    ctx.strokeStyle = 'rgba(180,220,255,.4)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(W, floorY); ctx.stroke();
+
+    // Ice texture lines
+    ctx.strokeStyle = 'rgba(180,220,255,.08)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 5; i++) {
+      ctx.beginPath(); ctx.moveTo(0, floorY + i*12); ctx.lineTo(W, floorY + i*12); ctx.stroke();
+    }
+
+    const aX = W * posA;
+    const bX = W * posB;
+    const skH = 60, skW = 22;
+    const skY = floorY - skH;
+
+    // Force arrows during push phase
+    if (phase === 'push' || (phase === 'flying' && pushT < 0.5)) {
+      const fadeAlpha = Math.max(0, 1 - pushT * 2.5);
+      const arrowLen = 40;
+      // Arrow on A (pointing left, from B onto A)
+      ctx.globalAlpha = fadeAlpha;
+      ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(aX + skW/2 + 8, skY + skH/2);
+      ctx.lineTo(aX + skW/2 + 8 + arrowLen, skY + skH/2); ctx.stroke();
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath();
+      ctx.moveTo(aX + skW/2, skY + skH/2);
+      ctx.lineTo(aX + skW/2 + 12, skY + skH/2 - 6);
+      ctx.lineTo(aX + skW/2 + 12, skY + skH/2 + 6);
+      ctx.closePath(); ctx.fill();
+      // Arrow on B (pointing right)
+      ctx.strokeStyle = '#3ecf8e'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(bX - skW/2 - 8, skY + skH/2);
+      ctx.lineTo(bX - skW/2 - 8 - arrowLen, skY + skH/2); ctx.stroke();
+      ctx.fillStyle = '#3ecf8e';
+      ctx.beginPath();
+      ctx.moveTo(bX - skW/2, skY + skH/2);
+      ctx.lineTo(bX - skW/2 - 12, skY + skH/2 - 6);
+      ctx.lineTo(bX - skW/2 - 12, skY + skH/2 + 6);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // "Equal force!" label
+      ctx.fillStyle = `rgba(255,215,0,${fadeAlpha})`;
+      ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('← Equal & opposite forces! →', W/2, skY - 12);
+    }
+
+    // Draw each skater
+    [[aX, massA, '#4a9eff', 'A', -1], [bX, massB, '#3ecf8e', 'B', 1]].forEach(([x, mass, col, lbl, dir]) => {
+      const bodyW = 18 + mass * 0.15;
+      const bodyH = 32 + mass * 0.2;
+      const bY    = skY + skH - bodyH;
+
+      // Skate
+      ctx.fillStyle = '#334466';
+      ctx.beginPath(); ctx.roundRect(x - bodyW/2 - 3, floorY - 4, bodyW + 6, 6, 2); ctx.fill();
+
+      // Body
+      const bg = ctx.createLinearGradient(x - bodyW/2, bY, x + bodyW/2, bY + bodyH);
+      bg.addColorStop(0, col); bg.addColorStop(1, col + '88');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.roundRect(x - bodyW/2, bY, bodyW, bodyH, 5); ctx.fill();
+
+      // Head
+      ctx.fillStyle = '#ffd9b3';
+      ctx.beginPath(); ctx.arc(x, bY - 10, 10, 0, Math.PI*2); ctx.fill();
+
+      // Mass label
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(mass + 'kg', x, bY + bodyH/2 + 4);
+
+      // Name
+      ctx.fillStyle = col; ctx.font = 'bold 12px system-ui';
+      ctx.fillText('Skater ' + lbl, x, bY - 24);
+
+      // Velocity arrow when flying
+      if (Math.abs(velA) > 0.1 && phase !== 'ready') {
+        const v   = lbl === 'A' ? velA : velB;
+        const len = Math.min(Math.abs(v) * 12, 60) * Math.sign(v);
+        ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + (dir < 0 ? -bodyW/2 : bodyW/2), bY + bodyH/2);
+        ctx.lineTo(x + (dir < 0 ? -bodyW/2 : bodyW/2) + len * 2.5, bY + bodyH/2); ctx.stroke();
+        ctx.fillStyle = '#ffd700'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
+        ctx.fillText(Math.abs(v).toFixed(1)+'m/s', x + len * 1.2 * dir, bY + bodyH/2 - 8);
+      }
+    });
+  }
+
+  function drawRocket(ctx, W, H) {
+    // Space background
+    ctx.fillStyle = '#020510';
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    if (!drawRocket._stars) {
+      drawRocket._stars = Array.from({length:80}, () =>
+        [Math.random()*W, Math.random()*H, Math.random()*1.2]);
+    }
+    drawRocket._stars.forEach(([x,y,r]) => {
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    });
+
+    const rX  = W / 2;
+    const rY  = H * rocketY;
+    const rW  = 34, rH = 60;
+
+    // Exhaust flame
+    if (rocketV < 0) {
+      const fLen = 20 + Math.sin(rflameT * 20) * 8;
+      const fg   = ctx.createLinearGradient(rX, rY + rH/2, rX, rY + rH/2 + fLen);
+      fg.addColorStop(0, '#ff6b00'); fg.addColorStop(0.5, '#ffcc00'); fg.addColorStop(1, 'transparent');
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.moveTo(rX - rW/3, rY + rH/2);
+      ctx.lineTo(rX, rY + rH/2 + fLen);
+      ctx.lineTo(rX + rW/3, rY + rH/2);
+      ctx.closePath(); ctx.fill();
+
+      // Force arrow DOWN (exhaust)
+      ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 2.5;
+      const aStart = rY + rH/2 + fLen + 8;
+      ctx.beginPath(); ctx.moveTo(rX, aStart); ctx.lineTo(rX, aStart + 30); ctx.stroke();
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath(); ctx.moveTo(rX, aStart+36); ctx.lineTo(rX-6,aStart+26); ctx.lineTo(rX+6,aStart+26); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff6b6b'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Exhaust force ↓', rX, aStart + 50);
+
+      // Force arrow UP (rocket)
+      ctx.strokeStyle = '#3ecf8e'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(rX, rY - rH/2 - 8); ctx.lineTo(rX, rY - rH/2 - 38); ctx.stroke();
+      ctx.fillStyle = '#3ecf8e';
+      ctx.beginPath(); ctx.moveTo(rX,rY-rH/2-44); ctx.lineTo(rX-6,rY-rH/2-34); ctx.lineTo(rX+6,rY-rH/2-34); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3ecf8e'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Rocket force ↑', rX, rY - rH/2 - 48);
+    }
+
+    // Rocket body
+    const rg = ctx.createLinearGradient(rX - rW/2, rY - rH/2, rX + rW/2, rY + rH/2);
+    rg.addColorStop(0, '#aabbdd'); rg.addColorStop(1, '#334466');
+    ctx.fillStyle = rg;
+    ctx.beginPath(); ctx.roundRect(rX - rW/2, rY - rH/2, rW, rH, 6); ctx.fill();
+
+    // Nose cone
+    ctx.fillStyle = '#cc3333';
+    ctx.beginPath();
+    ctx.moveTo(rX - rW/2, rY - rH/2);
+    ctx.lineTo(rX, rY - rH/2 - 22);
+    ctx.lineTo(rX + rW/2, rY - rH/2);
+    ctx.closePath(); ctx.fill();
+
+    // Window
+    ctx.fillStyle = '#88ccff';
+    ctx.beginPath(); ctx.arc(rX, rY - 8, 8, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#446688'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(rX, rY - 8, 8, 0, Math.PI*2); ctx.stroke();
+
+    // Fins
+    ctx.fillStyle = '#cc3333';
+    [[-1],[1]].forEach(([s]) => {
+      ctx.beginPath();
+      ctx.moveTo(rX + s*rW/2, rY + rH/2 - 14);
+      ctx.lineTo(rX + s*(rW/2 + 16), rY + rH/2 + 4);
+      ctx.lineTo(rX + s*rW/2, rY + rH/2);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+
+  function setScene(sc) {
+    scene = sc;
+    reset();
+  }
+
+  return { push, reset, draw, updateMasses, setScene };
+})();
+
+function setScene(el, scene) {
+  document.querySelectorAll('#scenarioChips .example-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const skaterCtrls = document.getElementById('s3skaterCtrls');
+  skaterCtrls.style.display = scene === 'skaters' ? '' : 'none';
+  if (scene === 'rocket') {
+    document.getElementById('btn3push').textContent = '🚀 Ignite!';
+    setStatus('s3msg', 'Press Ignite to fire the rocket and see the reaction force!');
+  } else {
+    document.getElementById('btn3push').textContent = '🤜 Push off!';
+    setStatus('s3msg', 'Press the button to see what happens when the skaters push off!');
+  }
+  law3.setScene(scene);
+}
+
+// ── Resize handler ─────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  law1.draw(); law2.draw(); law3.draw();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+law1.draw();
+law2.update();
+law2.draw();
+law3.draw();
+</script>
+</body>
+</html>
