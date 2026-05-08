@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Derivative Visualiser | Infinite Knowledge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --surface:   #0c1528;
+      --surface2:  #111e38;
+      --ui-bg:     rgba(8,16,34,.94);
+      --ui-border: rgba(255,255,255,.08);
+      --text:      #dde4f0;
+      --muted:     #6b7a94;
+      --accent:    #4a9eff;
+      --green:     #3ecf8e;
+      --yellow:    #ffd700;
+      --red:       #ff6b6b;
+      --orange:    #ff9f4a;
+      --purple:    #b47aff;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      padding: 10px 20px;
+      background: var(--ui-bg);
+      border-bottom: 1px solid var(--ui-border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; backdrop-filter: blur(12px);
+    }
+    .brand { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .hed   { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .tag   {
+      font-size: 11px; color: var(--orange);
+      background: rgba(255,159,74,.1);
+      border: 1px solid rgba(255,159,74,.25);
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* ── Body layout ─────────────────────────────────────── */
+    .body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 750px) {
+      .body { grid-template-columns: 1fr; }
+      .sidebar { border-left: none; border-top: 1px solid var(--ui-border); max-height: 260px; overflow-y: auto; }
+    }
+
+    /* ── Canvas pane ─────────────────────────────────────── */
+    .canvas-pane {
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    canvas#graph {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Floating x readout */
+    .x-readout {
+      position: absolute;
+      bottom: 14px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      border-radius: 20px;
+      padding: 5px 18px;
+      font-size: 13px; color: var(--muted);
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+    .x-readout span { color: var(--text); font-weight: 600; }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      border-left: 1px solid var(--ui-border);
+      background: var(--surface);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+    .sb-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--ui-border);
+    }
+    .sb-label {
+      font-size: 11px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .07em; margin-bottom: 10px;
+    }
+
+    /* Function picker */
+    .fn-btn {
+      width: 100%; text-align: left;
+      padding: 9px 12px; border-radius: 6px; margin-bottom: 5px;
+      border: 1px solid var(--ui-border);
+      background: transparent; color: var(--muted);
+      font-size: 13px; cursor: pointer; transition: all .15s;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .fn-btn:hover  { background: rgba(255,255,255,.05); color: var(--text); }
+    .fn-btn.active { background: rgba(255,159,74,.12); border-color: var(--orange); color: var(--orange); }
+    .fn-formula    { font-family: 'Georgia', serif; font-size: 14px; }
+    .fn-derivative { font-size: 11px; color: var(--muted); font-family: 'Georgia', serif; }
+    .fn-btn.active .fn-derivative { color: rgba(255,159,74,.6); }
+
+    /* Toggles */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .toggle-label { font-size: 13px; }
+    .toggle {
+      position: relative; width: 38px; height: 20px;
+      cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider-track {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,.1);
+      border-radius: 20px;
+      transition: background .2s;
+    }
+    .slider-track::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted);
+      top: 3px; left: 3px;
+      transition: transform .2s, background .2s;
+    }
+    .toggle input:checked + .slider-track { background: rgba(255,159,74,.35); }
+    .toggle input:checked + .slider-track::before {
+      transform: translateX(18px);
+      background: var(--orange);
+    }
+
+    /* Numeric readouts */
+    .num-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .num-card {
+      background: var(--surface2);
+      border: 1px solid var(--ui-border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .num-card-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+    .num-card-val   {
+      font-size: 20px; font-weight: 700;
+      font-family: 'Georgia', serif;
+    }
+    .num-card-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* X slider */
+    .x-slider {
+      width: 100%;
+      accent-color: var(--orange);
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .slider-bounds {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--muted); margin-top: 4px;
+    }
+
+    /* Rise/run explainer */
+    .rr-box {
+      background: rgba(255,215,0,.06);
+      border: 1px solid rgba(255,215,0,.18);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px; line-height: 1.6;
+    }
+    .rr-formula {
+      font-family: 'Georgia', serif;
+      font-size: 15px; color: var(--yellow);
+      text-align: center; margin: 8px 0 4px;
+    }
+
+    /* Insight */
+    .insight {
+      padding: 16px 18px;
+      font-size: 12px; line-height: 1.65; color: var(--muted);
+    }
+    .insight strong { color: var(--text); }
+    .insight-head {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--accent); margin-bottom: 7px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Infinite Knowledge · Mathematics · Calculus · Feature 2</div>
+    <div class="hed">Derivative Visualiser</div>
+  </div>
+  <div class="tag">Instantaneous Rate of Change</div>
+</header>
+
+<div class="body">
+
+  <!-- Graph canvas -->
+  <div class="canvas-pane" id="canvasPane">
+    <canvas id="graph"></canvas>
+    <div class="x-readout">Move cursor or drag slider &nbsp;·&nbsp; x = <span id="xReadout">0.00</span></div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Function picker -->
+    <div class="sb-section">
+      <div class="sb-label">Function f(x)</div>
+      <div id="fnButtons"></div>
+    </div>
+
+    <!-- Toggles -->
+    <div class="sb-section">
+      <div class="sb-label">Display</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Tangent line</span>
+        <label class="toggle">
+          <input type="checkbox" id="togTangent" checked onchange="render()">
+          <span class="slider-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Derivative curve f′(x)</span>
+        <label class="toggle">
+          <input type="checkbox" id="togDeriv" onchange="render()">
+          <span class="slider-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Rise / run triangle</span>
+        <label class="toggle">
+          <input type="checkbox" id="togRR" onchange="render()">
+          <span class="slider-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Grid lines</span>
+        <label class="toggle">
+          <input type="checkbox" id="togGrid" checked onchange="render()">
+          <span class="slider-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- X position -->
+    <div class="sb-section">
+      <div class="sb-label">x position</div>
+      <input class="x-slider" type="range" id="xSlider"
+             min="-10" max="10" step="0.05" value="1"
+             oninput="onSlider(this.value)" />
+      <div class="slider-bounds"><span>−10</span><span>10</span></div>
+    </div>
+
+    <!-- Numeric readouts -->
+    <div class="sb-section">
+      <div class="sb-label">Values at x = <span id="xLabel">1.00</span></div>
+      <div class="num-grid">
+        <div class="num-card">
+          <div class="num-card-label">f(x)</div>
+          <div class="num-card-val" id="fxVal" style="color:var(--accent)">—</div>
+          <div class="num-card-sub">function value</div>
+        </div>
+        <div class="num-card">
+          <div class="num-card-label">f′(x)</div>
+          <div class="num-card-val" id="fpxVal" style="color:var(--orange)">—</div>
+          <div class="num-card-sub">slope of tangent</div>
+        </div>
+        <div class="num-card" style="grid-column:1/-1">
+          <div class="num-card-label">Tangent line equation</div>
+          <div class="num-card-val" id="tangentEq" style="font-size:13px;color:var(--text)">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rise / run box -->
+    <div class="sb-section">
+      <div class="sb-label">What is a derivative?</div>
+      <div class="rr-box">
+        The derivative f′(x) is the <strong>slope of the tangent line</strong> at x —
+        the instantaneous rate of change. It is the limit of rise over run as the
+        run shrinks to zero:
+        <div class="rr-formula">f′(x) = lim<sub>h→0</sub> [f(x+h) − f(x)] / h</div>
+        Enable <em>Rise / run triangle</em> above to see this geometrically.
+      </div>
+    </div>
+
+    <!-- Insight -->
+    <div class="insight">
+      <div class="insight-head">💡 Insight</div>
+      <div id="insightText">
+        Select a function and drag the slider. Watch where f′(x) = 0 — those are
+        <strong>turning points</strong>. Where f′(x) &gt; 0 the function rises;
+        where f′(x) &lt; 0 it falls.
+      </div>
+    </div>
+
+  </div><!-- sidebar -->
+</div><!-- body -->
+
+<script>
+// ── Functions ──────────────────────────────────────────────────────────────────
+const FUNCTIONS = [
+  {
+    id: 'quad',
+    label: 'Quadratic',
+    formula: 'x²',
+    derivLabel: "f′(x) = 2x",
+    f:  x => x * x,
+    fp: x => 2 * x,
+    xRange: [-5, 5], yRange: [-2, 26],
+    insight: 'The parabola x² has a minimum at x = 0 where f′(0) = 0. The derivative 2x is a straight line — positive for x > 0 (rising), negative for x < 0 (falling).',
+  },
+  {
+    id: 'cubic',
+    label: 'Cubic',
+    formula: 'x³ − 3x',
+    derivLabel: "f′(x) = 3x² − 3",
+    f:  x => x*x*x - 3*x,
+    fp: x => 3*x*x - 3,
+    xRange: [-3, 3], yRange: [-6, 6],
+    insight: 'This cubic has two turning points. Set f′(x) = 3x² − 3 = 0 → x = ±1. At x = 1 there is a local minimum; at x = −1 a local maximum.',
+  },
+  {
+    id: 'sin',
+    label: 'Sine',
+    formula: 'sin(x)',
+    derivLabel: "f′(x) = cos(x)",
+    f:  x => Math.sin(x),
+    fp: x => Math.cos(x),
+    xRange: [-7, 7], yRange: [-2, 2],
+    insight: 'The derivative of sin(x) is cos(x) — another wave, shifted left by π/2. Wherever sin peaks or troughs, cos = 0. Wherever sin crosses zero, |cos| = 1 (steepest slope).',
+  },
+  {
+    id: 'cos',
+    label: 'Cosine',
+    formula: 'cos(x)',
+    derivLabel: "f′(x) = −sin(x)",
+    f:  x => Math.cos(x),
+    fp: x => -Math.sin(x),
+    xRange: [-7, 7], yRange: [-2, 2],
+    insight: 'The derivative of cos(x) is −sin(x). Notice the sign flip: cos decreases where sin is positive. The two functions are 90° out of phase.',
+  },
+  {
+    id: 'exp',
+    label: 'Exponential',
+    formula: 'eˣ',
+    derivLabel: "f′(x) = eˣ",
+    f:  x => Math.exp(x),
+    fp: x => Math.exp(x),
+    xRange: [-4, 4], yRange: [-1, 30],
+    insight: 'eˣ is the only function that is its own derivative — the slope at every point equals the function\'s value. This self-similarity makes it fundamental to growth and decay models.',
+  },
+  {
+    id: 'ln',
+    label: 'Natural log',
+    formula: 'ln(x)',
+    derivLabel: "f′(x) = 1/x",
+    f:  x => x > 0 ? Math.log(x) : NaN,
+    fp: x => x > 0 ? 1/x : NaN,
+    xRange: [0.1, 8], yRange: [-3, 3],
+    insight: 'ln(x) is only defined for x > 0. Its derivative 1/x is always positive (the function always rises) but decreases — the curve flattens as x grows, showing diminishing returns.',
+  },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let fn    = FUNCTIONS[0];
+let xPos  = 1.0;
+
+// ── Build function buttons ─────────────────────────────────────────────────────
+function buildFnButtons() {
+  const wrap = document.getElementById('fnButtons');
+  FUNCTIONS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'fn-btn' + (f.id === fn.id ? ' active' : '');
+    btn.id = 'fnb_' + f.id;
+    btn.innerHTML = `
+      <span>
+        <span class="fn-formula">f(x) = ${f.formula}</span><br>
+        <span class="fn-derivative">${f.derivLabel}</span>
+      </span>`;
+    btn.onclick = () => selectFn(f);
+    wrap.appendChild(btn);
+  });
+}
+
+function selectFn(f) {
+  fn = f;
+  document.querySelectorAll('.fn-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('fnb_' + f.id).classList.add('active');
+  // Clamp xPos to valid range
+  xPos = Math.max(f.xRange[0], Math.min(f.xRange[1], xPos));
+  const slider = document.getElementById('xSlider');
+  slider.min   = f.xRange[0];
+  slider.max   = f.xRange[1];
+  slider.value = xPos;
+  document.getElementById('insightText').textContent = f.insight;
+  render();
+}
+
+// ── Slider ─────────────────────────────────────────────────────────────────────
+function onSlider(v) {
+  xPos = parseFloat(v);
+  render();
+}
+
+// ── Coordinate helpers ─────────────────────────────────────────────────────────
+let W, H, pad;
+
+function toCanvas(x, y) {
+  const [xMin, xMax] = fn.xRange;
+  const [yMin, yMax] = fn.yRange;
+  const cx = pad.left + (x - xMin) / (xMax - xMin) * (W - pad.left - pad.right);
+  const cy = pad.top  + (yMax - y) / (yMax - yMin) * (H - pad.top  - pad.bottom);
+  return [cx, cy];
+}
+
+function fromCanvas(cx) {
+  const [xMin, xMax] = fn.xRange;
+  return xMin + (cx - pad.left) / (W - pad.left - pad.right) * (xMax - xMin);
+}
+
+// ── Main render ────────────────────────────────────────────────────────────────
+function render() {
+  const canvas = document.getElementById('graph');
+  const pane   = document.getElementById('canvasPane');
+  W = pane.clientWidth;
+  H = pane.clientHeight;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  pad = { top: 30, right: 24, bottom: 36, left: 50 };
+
+  const [xMin, xMax] = fn.xRange;
+  const [yMin, yMax] = fn.yRange;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const showGrid    = document.getElementById('togGrid').checked;
+  const showTangent = document.getElementById('togTangent').checked;
+  const showDeriv   = document.getElementById('togDeriv').checked;
+  const showRR      = document.getElementById('togRR').checked;
+
+  // ── Grid ────────────────────────────────────────────────
+  if (showGrid) {
+    ctx.strokeStyle = 'rgba(255,255,255,.05)';
+    ctx.lineWidth = 1;
+    for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
+      const [cx] = toCanvas(x, 0);
+      ctx.beginPath(); ctx.moveTo(cx, pad.top); ctx.lineTo(cx, H - pad.bottom); ctx.stroke();
+    }
+    const yStep = (yMax - yMin) > 20 ? 5 : (yMax - yMin) > 8 ? 2 : 1;
+    for (let y = Math.ceil(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+      const [, cy] = toCanvas(0, y);
+      ctx.beginPath(); ctx.moveTo(pad.left, cy); ctx.lineTo(W - pad.right, cy); ctx.stroke();
+    }
+  }
+
+  // ── Axes ────────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(255,255,255,.2)';
+  ctx.lineWidth = 1.5;
+  const [, cy0] = toCanvas(0, 0);
+  const [cx0]   = toCanvas(0, 0);
+  // x axis
+  if (cy0 >= pad.top && cy0 <= H - pad.bottom) {
+    ctx.beginPath(); ctx.moveTo(pad.left, cy0); ctx.lineTo(W - pad.right, cy0); ctx.stroke();
+  }
+  // y axis
+  if (cx0 >= pad.left && cx0 <= W - pad.right) {
+    ctx.beginPath(); ctx.moveTo(cx0, pad.top); ctx.lineTo(cx0, H - pad.bottom); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
+    if (x === 0) continue;
+    const [cx, cy] = toCanvas(x, 0);
+    const labelY = Math.min(H - pad.bottom + 16, Math.max(pad.top + 16, cy + 16));
+    ctx.fillText(x, cx, labelY);
+  }
+  ctx.textAlign = 'right';
+  const yStep2 = (yMax - yMin) > 20 ? 5 : (yMax - yMin) > 8 ? 2 : 1;
+  for (let y = Math.ceil(yMin / yStep2) * yStep2; y <= yMax; y += yStep2) {
+    if (y === 0) continue;
+    const [cx, cy] = toCanvas(0, y);
+    const labelX = Math.max(pad.left - 5, Math.min(W - pad.right - 5, cx - 5));
+    ctx.fillText(y, labelX, cy + 4);
+  }
+
+  // ── Derivative curve f′(x) ──────────────────────────────
+  if (showDeriv) {
+    ctx.strokeStyle = 'rgba(255,159,74,.55)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    let first = true;
+    for (let px = pad.left; px <= W - pad.right; px += 1) {
+      const x  = fromCanvas(px);
+      const dy = fn.fp(x);
+      if (!isFinite(dy)) { first = true; continue; }
+      const [, cy] = toCanvas(x, dy);
+      if (cy < pad.top - 20 || cy > H - pad.bottom + 20) { first = true; continue; }
+      if (first) { ctx.moveTo(px, cy); first = false; } else ctx.lineTo(px, cy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label
+    ctx.fillStyle = 'rgba(255,159,74,.7)';
+    ctx.font = '11px Georgia,serif';
+    ctx.textAlign = 'left';
+    ctx.fillText("f′(x)", W - pad.right - 30, pad.top + 14);
+  }
+
+  // ── f(x) curve ──────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(74,158,255,.9)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  let first = true;
+  for (let px = pad.left; px <= W - pad.right; px += 1) {
+    const x  = fromCanvas(px);
+    const y  = fn.f(x);
+    if (!isFinite(y)) { first = true; continue; }
+    const [, cy] = toCanvas(x, y);
+    if (cy < pad.top - 20 || cy > H - pad.bottom + 20) { first = true; continue; }
+    if (first) { ctx.moveTo(px, cy); first = false; } else ctx.lineTo(px, cy);
+  }
+  ctx.stroke();
+
+  // f(x) label
+  ctx.fillStyle = 'rgba(74,158,255,.8)';
+  ctx.font = '11px Georgia,serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('f(x)', pad.left + 6, pad.top + 14);
+
+  // ── Values at xPos ──────────────────────────────────────
+  const fy  = fn.f(xPos);
+  const fpy = fn.fp(xPos);
+  const [cpx, cpy] = toCanvas(xPos, fy);
+
+  if (isFinite(fy) && isFinite(fpy)) {
+
+    // ── Rise / run triangle ─────────────────────────────
+    if (showRR && showTangent) {
+      const runW = (W - pad.left - pad.right) * 0.12;
+      const riseH = fpy * runW / ((xMax - xMin) / (W - pad.left - pad.right)) *
+                    ((H - pad.top - pad.bottom) / (yMax - yMin));
+      ctx.fillStyle   = 'rgba(255,215,0,.08)';
+      ctx.strokeStyle = 'rgba(255,215,0,.4)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.moveTo(cpx, cpy);
+      ctx.lineTo(cpx + runW, cpy);
+      ctx.lineTo(cpx + runW, cpy - riseH);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Labels
+      ctx.fillStyle = 'rgba(255,215,0,.7)';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('run', cpx + runW/2, cpy + 14);
+      ctx.textAlign = 'left';
+      ctx.fillText('rise', cpx + runW + 5, cpy - riseH/2);
+    }
+
+    // ── Tangent line ────────────────────────────────────
+    if (showTangent) {
+      // y - fy = fpy * (x - xPos)  →  y = fpy*x + (fy - fpy*xPos)
+      const b = fy - fpy * xPos;
+      const txLeft  = fromCanvas(pad.left);
+      const txRight = fromCanvas(W - pad.right);
+      const tyLeft  = fpy * txLeft  + b;
+      const tyRight = fpy * txRight + b;
+      const [tlx, tly] = toCanvas(txLeft,  tyLeft);
+      const [trx, try_] = toCanvas(txRight, tyRight);
+
+      ctx.strokeStyle = '#ff9f4a';
+      ctx.lineWidth   = 2;
+      ctx.beginPath(); ctx.moveTo(tlx, tly); ctx.lineTo(trx, try_); ctx.stroke();
+    }
+
+    // ── x vertical guide line ───────────────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,.15)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cpx, H - pad.bottom); ctx.lineTo(cpx, cpy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ── Point on curve ──────────────────────────────────
+    ctx.fillStyle   = '#fff';
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth   = 2.5;
+    ctx.beginPath(); ctx.arc(cpx, cpy, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    // ── Sidebar readouts ────────────────────────────────
+    document.getElementById('xReadout').textContent = xPos.toFixed(2);
+    document.getElementById('xLabel').textContent   = xPos.toFixed(2);
+    document.getElementById('fxVal').textContent    = fy.toFixed(3);
+    document.getElementById('fpxVal').textContent   = fpy.toFixed(3);
+
+    const b = fy - fpy * xPos;
+    const sign = b >= 0 ? '+' : '−';
+    const bAbs = Math.abs(b).toFixed(2);
+    const mStr = fpy === 0 ? '0' : fpy.toFixed(2);
+    document.getElementById('tangentEq').textContent =
+      `y = ${mStr}x ${sign} ${bAbs}`;
+
+    // ── Dynamic insight ─────────────────────────────────
+    updateInsight(fpy);
+  }
+}
+
+// ── Dynamic insight ────────────────────────────────────────────────────────────
+function updateInsight(fpy) {
+  const el  = document.getElementById('insightText');
+  const eps = 0.05;
+  if (Math.abs(fpy) < eps) {
+    el.innerHTML = `At x = <strong>${xPos.toFixed(2)}</strong>, f′(x) ≈ 0 — this is a
+      <strong>turning point</strong> (local maximum, minimum, or saddle). The tangent
+      line is horizontal here.`;
+  } else if (fpy > 0) {
+    el.innerHTML = `At x = <strong>${xPos.toFixed(2)}</strong>, f′(x) = <strong>${fpy.toFixed(3)}</strong>
+      — the function is <strong>rising</strong>. For every 1 unit you move right,
+      f(x) increases by about ${Math.abs(fpy).toFixed(2)} units.`;
+  } else {
+    el.innerHTML = `At x = <strong>${xPos.toFixed(2)}</strong>, f′(x) = <strong>${fpy.toFixed(3)}</strong>
+      — the function is <strong>falling</strong>. For every 1 unit you move right,
+      f(x) decreases by about ${Math.abs(fpy).toFixed(2)} units.`;
+  }
+}
+
+// ── Mouse interaction on canvas ────────────────────────────────────────────────
+const pane = document.getElementById('canvasPane');
+
+pane.addEventListener('mousemove', e => {
+  if (!W) return;
+  const rect = pane.getBoundingClientRect();
+  const cx   = e.clientX - rect.left;
+  const x    = Math.max(fn.xRange[0], Math.min(fn.xRange[1], fromCanvas(cx)));
+  xPos = x;
+  document.getElementById('xSlider').value = x;
+  render();
+});
+
+pane.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = pane.getBoundingClientRect();
+  const cx   = e.touches[0].clientX - rect.left;
+  const x    = Math.max(fn.xRange[0], Math.min(fn.xRange[1], fromCanvas(cx)));
+  xPos = x;
+  document.getElementById('xSlider').value = x;
+  render();
+}, { passive: false });
+
+window.addEventListener('resize', render);
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildFnButtons();
+document.getElementById('insightText').textContent = FUNCTIONS[0].insight;
+render();
+</script>
+</body>
+</html>
